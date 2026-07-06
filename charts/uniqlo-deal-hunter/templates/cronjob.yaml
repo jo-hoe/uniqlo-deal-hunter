@@ -46,9 +46,11 @@ spec:
                 - name: config
                   mountPath: /run/config
                   readOnly: true
+                {{- if .Values.notifier.smtp.auth.enabled }}
                 - name: smtp
                   mountPath: /run/secrets/smtp
                   readOnly: true
+                {{- end }}
                 {{- if .Values.persistence.enabled }}
                 - name: state
                   mountPath: /var/lib/uniqlo-deal-hunter
@@ -62,10 +64,12 @@ spec:
             - name: config
               configMap:
                 name: {{ include "uniqlo-deal-hunter.fullname" . }}-config
+            {{- if .Values.notifier.smtp.auth.enabled }}
             - name: smtp
               secret:
-                secretName: {{ .Values.notifier.smtp.passwordSecret.name }}
+                secretName: {{ include "uniqlo-deal-hunter.smtpSecretName" . }}
                 defaultMode: 0400
+            {{- end }}
             {{- if .Values.persistence.enabled }}
             - name: state
               persistentVolumeClaim:

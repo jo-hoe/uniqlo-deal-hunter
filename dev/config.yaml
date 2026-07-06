@@ -31,8 +31,8 @@ notifier:
     startTLS: false
     from: deals@local
     to: ["me@local"]
-    username: ""         # Mailhog needs no auth
-    passwordFile: ./dev/smtp-password
+    # Mailhog is no-auth: leave username empty and omit passwordFile.
+    username: ""
 
 store:
   kind: sqlite

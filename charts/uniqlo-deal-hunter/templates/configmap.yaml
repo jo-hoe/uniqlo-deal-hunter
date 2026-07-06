@@ -47,13 +47,20 @@ data:
         startTLS: {{ .Values.notifier.smtp.startTLS }}
         from: {{ .Values.notifier.smtp.from | quote }}
         to: {{ toJson .Values.notifier.smtp.to }}
-        username: {{ .Values.notifier.smtp.username | quote }}
-        passwordFile: /run/secrets/smtp/{{ .Values.notifier.smtp.passwordSecret.key }}
+        {{- if .Values.notifier.smtp.auth.enabled }}
+        username: {{ .Values.notifier.smtp.auth.username | quote }}
+        passwordFile: /run/secrets/smtp/{{ include "uniqlo-deal-hunter.smtpSecretKey" . }}
+        {{- end }}
         timeout: {{ .Values.notifier.smtp.timeout | quote }}
 
     store:
       kind: sqlite
+      {{- if .Values.persistence.enabled }}
       path: /var/lib/uniqlo-deal-hunter/state.db
+      {{- else }}
+      # persistence disabled — state is kept in-memory and lost on pod exit.
+      path: ":memory:"
+      {{- end }}
       retentionDays: {{ .Values.persistence.retentionDays }}
 
     logging:

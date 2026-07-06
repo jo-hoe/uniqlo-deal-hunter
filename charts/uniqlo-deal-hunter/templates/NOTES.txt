@@ -9,5 +9,17 @@ Trigger a one-off run for testing:
 Watch logs:
   kubectl -n {{ .Release.Namespace }} logs -f -l app.kubernetes.io/instance={{ .Release.Name }}
 
-Make sure the SMTP password Secret exists:
-  kubectl -n {{ .Release.Namespace }} get secret {{ .Values.notifier.smtp.passwordSecret.name }}
+{{- if .Values.notifier.smtp.auth.enabled }}
+SMTP AUTH is ENABLED. The Secret mounted at /run/secrets/smtp is:
+  kubectl -n {{ .Release.Namespace }} get secret {{ include "uniqlo-deal-hunter.smtpSecretName" . }}
+{{- else }}
+SMTP AUTH is DISABLED. The pod will connect to
+{{ .Values.notifier.smtp.host }}:{{ .Values.notifier.smtp.port }} without any password.
+{{- end }}
+
+{{- if not .Values.persistence.enabled }}
+
+WARNING: persistence is DISABLED. State is kept in an in-memory SQLite
+database and lost between runs — every discovered deal will be re-notified
+on the next CronJob run.
+{{- end }}

@@ -137,6 +137,63 @@ store: {kind: sqlite}
 	}
 }
 
+func TestLoad_NoAuth_Allowed(t *testing.T) {
+	// Username omitted → notifier runs no-auth; passwordFile is not required.
+	body := `
+source:
+  kind: uniqlo
+  baseURL: https://x
+  region: de
+  language: en
+  gender: men
+  clientID: c
+rules: [{name: r}]
+notifier:
+  kind: smtp
+  smtp:
+    host: relay.internal
+    port: 25
+    from: a@b
+    to: ["x@y"]
+store: {kind: sqlite, path: /db}
+`
+	path := writeConfig(t, body)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("no-auth config should be valid, got: %v", err)
+	}
+	if cfg.Notifier.SMTP.Username != "" || cfg.Notifier.SMTP.PasswordFile != "" {
+		t.Errorf("expected empty auth fields, got %+v", cfg.Notifier.SMTP)
+	}
+}
+
+func TestLoad_UsernameWithoutPasswordFile_Rejected(t *testing.T) {
+	body := `
+source:
+  kind: uniqlo
+  baseURL: https://x
+  region: de
+  language: en
+  gender: men
+  clientID: c
+rules: [{name: r}]
+notifier:
+  kind: smtp
+  smtp:
+    host: s
+    port: 25
+    from: a@b
+    to: ["x@y"]
+    username: u
+store: {kind: sqlite, path: /db}
+`
+	path := writeConfig(t, body)
+	_, err := Load(path)
+	if !errors.Is(err, ErrInvalidConfig) {
+		t.Fatalf("username without passwordFile must be rejected, got %v", err)
+	}
+}
+
 func TestLoad_FileMissing(t *testing.T) {
 	_, err := Load("/does/not/exist.yaml")
 	if err == nil {

@@ -135,7 +135,7 @@ notifier:
   smtp:
     # -- SMTP host.
     host: smtp.example.com
-    # -- SMTP port (typically 587 for STARTTLS).
+    # -- SMTP port (typically 587 for STARTTLS, 25 for internal relays).
     port: 587
     # -- Whether to negotiate STARTTLS after EHLO.
     startTLS: true
@@ -144,39 +144,70 @@ notifier:
     # -- One or more recipient addresses.
     to:
       - me@example.com
-    # -- SMTP AUTH username.
-    username: deals@example.com
     # -- Timeout applied to the entire SMTP dialog.
     timeout: 15s
-    # -- Reference to a Kubernetes Secret carrying the SMTP password.
-    # The secret must contain the key given by `passwordSecret.key`. The
-    # chart NEVER puts the password into a ConfigMap or an env var — the
-    # Secret is mounted as a file at /run/secrets/smtp/<key>.
-    passwordSecret:
-      # -- Name of an existing Secret.
-      name: uniqlo-smtp
-      # -- Key inside that Secret containing the password.
-      key: password
-      # -- If true, the chart creates the Secret itself using `passwordSecret.value`.
-      # Prefer supplying the Secret out-of-band (e.g. via sealed-secrets or
-      # external-secrets) and leaving this false.
-      create: false
-      # -- Plaintext password used only when `create` is true (dev / bootstrap).
-      value: ""
+
+    # -- Authentication configuration. Three mutually-exclusive modes are
+    # supported:
+    #
+    #   1. `enabled: false`
+    #      No AUTH handshake, no password mount, no k8s Secret required.
+    #      For internal cluster mail relays with authentication disabled.
+    #
+    #   2. `enabled: true` + `existingSecret.name: <name>`
+    #      Reference an out-of-band Secret (e.g. one managed by
+    #      sealed-secrets, external-secrets, or helm-secrets). The chart
+    #      mounts it at /run/secrets/smtp/<key>. NEVER commit plaintext.
+    #
+    #   3. `enabled: true` + `password: <value>`
+    #      The chart itself creates a Secret containing the given value.
+    #      Use with `helm secrets install` to keep the value encrypted at
+    #      rest, or reserve for local/dev bootstrap only.
+    auth:
+      # -- Whether the SMTP server requires AUTH. Set to false for
+      # password-less internal relays.
+      enabled: true
+      # -- SMTP AUTH username. Ignored when `auth.enabled` is false.
+      username: deals@example.com
+      # -- Reference to an existing Secret containing the password.
+      # If `name` is set, the chart mounts that Secret and will NOT create
+      # a new one; the inline `password` field is ignored.
+      existingSecret:
+        # -- Name of a pre-existing Secret in the release namespace.
+        name: ""
+        # -- Key inside the Secret containing the password.
+        key: password
+      # -- Inline password. When set (and `existingSecret.name` is empty),
+      # the chart creates a Secret containing this value. Prefer supplying
+      # via `helm secrets install -f secrets.yaml` so the file is never
+      # committed in plaintext.
+      password: ""
 
 # -- Persistence for the SQLite state DB.
+#
+# When `enabled: true`, the chart creates a PVC and mounts it into the pod
+# at /var/lib/uniqlo-deal-hunter. State survives pod restarts, so a deal is
+# announced at most once.
+#
+# When `enabled: false`, the app runs SQLite in-memory (`:memory:`). NO PVC
+# is created and NO volume is mounted. Every pod restart wipes the dedup
+# state, so any deal that is still on sale will be announced again on the
+# next CronJob run. Choose this mode only when re-notifications are
+# acceptable or when the CronJob runs infrequently enough that duplicates
+# are tolerable.
 persistence:
   # -- Enable PVC-backed persistence. When false, state is lost every run.
   enabled: true
-  # -- StorageClass name; empty uses the cluster default.
+  # -- StorageClass name; empty uses the cluster default. Ignored when `enabled: false`.
   storageClass: ""
-  # -- Access modes.
+  # -- Access modes. Ignored when `enabled: false`.
   accessModes: [ReadWriteOnce]
-  # -- Requested size.
+  # -- Requested size. Ignored when `enabled: false`.
   size: 100Mi
-  # -- Existing PVC name to reuse (skips creating a new one).
+  # -- Existing PVC name to reuse (skips creating a new one). Ignored when `enabled: false`.
   existingClaim: ""
-  # -- Days of state to retain before pruning old rows.
+  # -- Days of state to retain before pruning old rows. Also applied to
+  # the in-memory store, though it never survives long enough to matter.
   retentionDays: 90
 
 # -- Logging configuration.

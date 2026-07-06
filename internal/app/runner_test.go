@@ -190,3 +190,47 @@ func TestRunner_FetchFailure_ReturnsError(t *testing.T) {
 		t.Fatal("expected fetch error to propagate")
 	}
 }
+
+func TestRunner_MultipleDeals_SingleEmail(t *testing.T) {
+	// Three matching deals in the same run must produce exactly ONE
+	// Notify call (i.e. one email) carrying all three, not three.
+	c1 := deal.Candidate{ProductID: "E1", Name: "Socks A", URL: "u1", PromoPrice: dec("3"), BasePrice: dec("10")}
+	c2 := deal.Candidate{ProductID: "E2", Name: "Socks B", URL: "u2", PromoPrice: dec("4"), BasePrice: dec("10")}
+	c3 := deal.Candidate{ProductID: "E3", Name: "Socks C", URL: "u3", PromoPrice: dec("5"), BasePrice: dec("10")}
+	src := &fakeSource{
+		candidates: []deal.Candidate{c1, c2, c3},
+		sizesByID: map[deal.ProductID][]deal.Size{
+			"E1": {{Code: "M", Label: "M", InStock: true}},
+			"E2": {{Code: "M", Label: "M", InStock: true}},
+			"E3": {{Code: "M", Label: "M", InStock: true}},
+		},
+	}
+	notif := &recordingNotifier{}
+	st := newMemoryStore()
+
+	r := newTestRunner(t, src, notif, st)
+	if err := r.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(notif.sent) != 1 {
+		t.Fatalf("expected exactly 1 Notify call for the batch, got %d", len(notif.sent))
+	}
+	if len(notif.sent[0]) != 3 {
+		t.Errorf("expected the one email to carry 3 deals, got %d", len(notif.sent[0]))
+	}
+}
+
+func TestRunner_ZeroDeals_NoEmail(t *testing.T) {
+	// Zero candidates → zero Notify calls (no empty digest email).
+	src := &fakeSource{candidates: nil}
+	notif := &recordingNotifier{}
+	st := newMemoryStore()
+
+	r := newTestRunner(t, src, notif, st)
+	if err := r.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(notif.sent) != 0 {
+		t.Errorf("expected zero Notify calls when no deals, got %d", len(notif.sent))
+	}
+}

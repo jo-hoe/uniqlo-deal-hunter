@@ -146,6 +146,47 @@ func TestReadPasswordFile_TrimsTrailingWhitespace(t *testing.T) {
 	}
 }
 
+func TestNew_NoAuth_SkipsPasswordFile(t *testing.T) {
+	// No PasswordFile at all -> no-auth mode. New() must not error.
+	n, err := New(config.SMTP{
+		Host: "relay.internal", Port: 25, StartTLS: false,
+		From: "a@b", To: []string{"x@y"},
+	})
+	if err != nil {
+		t.Fatalf("New in no-auth mode: %v", err)
+	}
+	if n == nil {
+		t.Fatal("nil notifier")
+	}
+}
+
+func TestNotify_NoAuth_SkipsAuthHandshake(t *testing.T) {
+	fc := &fakeClient{}
+	n, err := New(config.SMTP{
+		Host: "relay.internal", Port: 25, StartTLS: false,
+		From: "a@b.c", To: []string{"x@y.z"},
+		// No Username, no PasswordFile.
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	n.dial = func(_ string) (Session, error) { return fc, nil }
+
+	deals := []notif.MatchedDeal{makeDeal("Socks", "2.90", "4.90", "4.90")}
+	if err := n.Notify(context.Background(), deals); err != nil {
+		t.Fatalf("Notify: %v", err)
+	}
+	if fc.starttlsCalled {
+		t.Errorf("expected StartTLS NOT called (startTLS=false)")
+	}
+	if fc.authCalled {
+		t.Errorf("expected Auth NOT called in no-auth mode")
+	}
+	if fc.mailFrom == "" || len(fc.rcptTo) == 0 {
+		t.Errorf("envelope must still be sent: %+v", fc)
+	}
+}
+
 // Sanity check: the fake writer's Close is called (so the SMTP body is
 // completed) — mostly documents the contract for future maintenance.
 func TestNotify_ClosesDataWriter(t *testing.T) {

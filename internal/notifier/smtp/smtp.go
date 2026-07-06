@@ -46,10 +46,11 @@ type writeCloser interface {
 	Close() error
 }
 
-// New constructs an SMTP notifier from config. Reads the password file at
-// construction time and keeps the value in memory.
+// New constructs an SMTP notifier from config. If a PasswordFile is set,
+// its contents are loaded at construction time and kept in memory; if not,
+// the notifier runs in no-auth mode and skips the AUTH handshake.
 func New(cfg config.SMTP) (*Notifier, error) {
-	pw, err := readPasswordFile(cfg.PasswordFile)
+	pw, err := loadPassword(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +60,17 @@ func New(cfg config.SMTP) (*Notifier, error) {
 		dial:     defaultDial,
 		now:      time.Now,
 	}, nil
+}
+
+// loadPassword returns the password for the SMTP AUTH handshake, or the
+// empty string when the notifier is configured for no-auth. Config validation
+// guarantees that if a Username is set, a PasswordFile is set too — so an
+// empty PasswordFile here unambiguously means "skip AUTH".
+func loadPassword(cfg config.SMTP) (string, error) {
+	if cfg.PasswordFile == "" {
+		return "", nil
+	}
+	return readPasswordFile(cfg.PasswordFile)
 }
 
 // readPasswordFile loads a secret file mounted from a k8s Secret.

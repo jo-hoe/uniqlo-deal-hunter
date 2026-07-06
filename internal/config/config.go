@@ -278,8 +278,8 @@ func (c *Config) validateNotifier() error {
 		return fmt.Errorf("%w: notifier.smtp.from is required", ErrInvalidConfig)
 	case len(s.To) == 0:
 		return fmt.Errorf("%w: notifier.smtp.to must have at least one recipient", ErrInvalidConfig)
-	case s.PasswordFile == "":
-		return fmt.Errorf("%w: notifier.smtp.passwordFile is required", ErrInvalidConfig)
+	case s.Username != "" && s.PasswordFile == "":
+		return fmt.Errorf("%w: notifier.smtp.passwordFile is required when username is set", ErrInvalidConfig)
 	}
 	return nil
 }
