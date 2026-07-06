@@ -188,11 +188,13 @@ func sleep(ctx context.Context, d time.Duration) error {
 }
 
 // jitter returns a random duration in [0, d/2) to spread retry storms.
+// math/rand/v2 is deliberately used here — this is not a security-sensitive
+// value, it's a backoff jitter, and crypto/rand would be excessive.
 func jitter(d time.Duration) time.Duration {
 	if d <= 0 {
 		return 0
 	}
-	return time.Duration(rand.Int64N(int64(d / 2)))
+	return time.Duration(rand.Int64N(int64(d / 2))) //nolint:gosec // non-crypto jitter
 }
 
 // ErrEmptyResponse signals a well-formed but empty API response, useful for

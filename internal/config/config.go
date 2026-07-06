@@ -253,7 +253,7 @@ func (c *Config) validateRules() error {
 		if r.NamePattern != "" {
 			re, err := regexp.Compile(r.NamePattern)
 			if err != nil {
-				return fmt.Errorf("%w: rules[%d].namePattern: %v", ErrInvalidConfig, i, err)
+				return fmt.Errorf("%w: rules[%d].namePattern: %w", ErrInvalidConfig, i, err)
 			}
 			r.compiled = re
 		}

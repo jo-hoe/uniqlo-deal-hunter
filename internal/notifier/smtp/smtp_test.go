@@ -48,7 +48,7 @@ func (c *fakeClient) Close() error                         { return nil }
 func (c *fakeClient) Extension(_ string) (bool, string)    { return false, "" }
 
 // Compile-time check that the fake really implements the interface.
-var _ SMTPClient = (*fakeClient)(nil)
+var _ Session = (*fakeClient)(nil)
 
 func writePwFile(t *testing.T, content string) string {
 	t.Helper()
@@ -71,7 +71,7 @@ func newNotifier(t *testing.T, fc *fakeClient) *Notifier {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	n.dial = func(addr string) (SMTPClient, error) { return fc, nil }
+	n.dial = func(addr string) (Session, error) { return fc, nil }
 	return n
 }
 

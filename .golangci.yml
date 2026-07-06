@@ -1,18 +1,19 @@
-# golangci-lint config — keep cyclomatic complexity low, code non-duplicated,
-# and errors handled. Runs in CI and locally via `make lint`.
+# golangci-lint v2 config. Keep cyclomatic complexity low, no duplication,
+# errors handled, security-conscious. Runs in CI and locally via `make lint`.
+version: "2"
+
 run:
   timeout: 5m
   tests: true
 
 linters:
-  disable-all: true
+  default: none
   enable:
     - errcheck
     - govet
     - staticcheck
     - unused
     - ineffassign
-    - gosimple
     - revive
     - gocyclo
     - gocognit
@@ -27,30 +28,32 @@ linters:
     - nilerr
     - nolintlint
 
-linters-settings:
-  gocyclo:
-    min-complexity: 10
-  gocognit:
-    min-complexity: 15
-  dupl:
-    threshold: 120
-  revive:
+  settings:
+    gocyclo:
+      min-complexity: 10
+    gocognit:
+      min-complexity: 15
+    dupl:
+      threshold: 120
+    revive:
+      rules:
+        - name: var-naming
+        - name: exported
+        - name: package-comments
+        - name: unexported-return
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+
+  exclusions:
     rules:
-      - name: var-naming
-      - name: exported
-      - name: package-comments
-      - name: unexported-return
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
+      # Test files may have longer table-driven tests and duplicated setup.
+      - path: _test\.go
+        linters: [gocognit, gocyclo, dupl, gosec, unparam, errcheck]
+      # Generated files (none yet, but future-proof).
+      - path: \.gen\.go
+        linters: [revive]
 
 issues:
-  exclude-rules:
-    # Test files may have longer table-driven tests and duplicated setup.
-    - path: _test\.go
-      linters: [gocognit, gocyclo, dupl, gosec, unparam, errcheck]
-    # Generated files (none yet, but future-proof).
-    - path: \.gen\.go
-      linters: [revive]
   max-issues-per-linter: 0
   max-same-issues: 0

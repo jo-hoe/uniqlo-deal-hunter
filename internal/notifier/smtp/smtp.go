@@ -23,13 +23,13 @@ type Notifier struct {
 	cfg      config.SMTP
 	password string
 	// dial and send are injected for testing.
-	dial func(addr string) (SMTPClient, error)
+	dial func(addr string) (Session, error)
 	now  func() time.Time
 }
 
-// SMTPClient captures the subset of *smtp.Client that this notifier needs.
+// Session captures the subset of *smtp.Client that this notifier needs.
 // Exposed for test doubles.
-type SMTPClient interface {
+type Session interface {
 	StartTLS(config *tls.Config) error
 	Auth(a smtp.Auth) error
 	Mail(from string) error
@@ -126,7 +126,7 @@ func (n *Notifier) send(msg []byte) error {
 }
 
 // negotiate performs STARTTLS + AUTH according to config.
-func (n *Notifier) negotiate(c SMTPClient) error {
+func (n *Notifier) negotiate(c Session) error {
 	if n.cfg.StartTLS {
 		if err := c.StartTLS(&tls.Config{ServerName: n.cfg.Host, MinVersion: tls.VersionTLS12}); err != nil {
 			return fmt.Errorf("starttls: %w", err)
@@ -142,7 +142,7 @@ func (n *Notifier) negotiate(c SMTPClient) error {
 }
 
 // writeEnvelope issues MAIL FROM and RCPT TO for every recipient.
-func writeEnvelope(c SMTPClient, from string, to []string) error {
+func writeEnvelope(c Session, from string, to []string) error {
 	if err := c.Mail(from); err != nil {
 		return fmt.Errorf("mail from: %w", err)
 	}
@@ -155,7 +155,7 @@ func writeEnvelope(c SMTPClient, from string, to []string) error {
 }
 
 // writeBody streams the message body via DATA.
-func writeBody(c SMTPClient, msg []byte) error {
+func writeBody(c Session, msg []byte) error {
 	w, err := c.Data()
 	if err != nil {
 		return fmt.Errorf("data: %w", err)
@@ -249,8 +249,8 @@ func buildView(matches []notifier.MatchedDeal) digestView {
 }
 
 // defaultDial opens a plain TCP connection and returns a wrapper around
-// *smtp.Client that satisfies our SMTPClient interface.
-func defaultDial(addr string) (SMTPClient, error) {
+// *smtp.Client that satisfies our Session interface.
+func defaultDial(addr string) (Session, error) {
 	c, err := smtp.Dial(addr)
 	if err != nil {
 		return nil, err
@@ -258,7 +258,7 @@ func defaultDial(addr string) (SMTPClient, error) {
 	return &smtpAdapter{c: c}, nil
 }
 
-// smtpAdapter adapts *smtp.Client to our SMTPClient interface. The only
+// smtpAdapter adapts *smtp.Client to our Session interface. The only
 // mismatch is Data(): *smtp.Client returns io.WriteCloser, we want a
 // writeCloser interface for test doubles.
 type smtpAdapter struct{ c *smtp.Client }

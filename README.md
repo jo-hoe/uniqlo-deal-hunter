@@ -7,18 +7,6 @@ percent), and sends a bullet-list email digest of new deals via SMTP.
 Persists notification state in SQLite so the same deal is never announced
 twice.
 
-## Highlights
-
-- **No headless browser** — talks to Uniqlo's public JSON API directly.
-  Small container (~15 MB, distroless), fast, easy to reason about.
-- **Strongly typed end-to-end**: config, API DTOs, domain, storage all use
-  concrete Go types. `shopspring/decimal` for money — never `float64`.
-- **Structured JSON logs** via stdlib `log/slog` — Grafana / Loki ready.
-- **CronJob-first**: one binary, one pass, exits 0. No daemon.
-- **Helm chart** released as an OCI artifact to GHCR.
-- **Auto-generated chart docs** via `helm-docs`.
-- **Local dev** with `k3d` + `Makefile`.
-
 ## Quick start (local)
 
 ```bash
@@ -86,4 +74,6 @@ logging:
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT with a no-AI-training rider — see [LICENSE](LICENSE). This code, and
+any dataset that includes it, must not be used to train or improve machine
+learning models.
