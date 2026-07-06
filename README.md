@@ -20,7 +20,7 @@ make run           # runs one pass against dev/config.yaml
 ```bash
 helm install uniqlo-deal-hunter \
   oci://ghcr.io/jo-hoe/charts/uniqlo-deal-hunter \
-  --version 0.1.0 \
+  --version 0.3.0 \
   -f my-values.yaml
 ```
 
@@ -60,6 +60,9 @@ notifier:
     startTLS: true
     from: deals@example.com
     to: ["me@example.com"]
+    # AUTH is off unless username is set. Chart users configure this
+    # via notifier.smtp.auth.* (see the chart README). At the app layer
+    # you either provide both username + passwordFile, or neither.
     username: deals@example.com
     passwordFile: /run/secrets/smtp/password
 
