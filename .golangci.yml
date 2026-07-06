@@ -1,0 +1,56 @@
+# golangci-lint config — keep cyclomatic complexity low, code non-duplicated,
+# and errors handled. Runs in CI and locally via `make lint`.
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - gosimple
+    - revive
+    - gocyclo
+    - gocognit
+    - dupl
+    - misspell
+    - unconvert
+    - unparam
+    - gosec
+    - bodyclose
+    - noctx
+    - errorlint
+    - nilerr
+    - nolintlint
+
+linters-settings:
+  gocyclo:
+    min-complexity: 10
+  gocognit:
+    min-complexity: 15
+  dupl:
+    threshold: 120
+  revive:
+    rules:
+      - name: var-naming
+      - name: exported
+      - name: package-comments
+      - name: unexported-return
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+
+issues:
+  exclude-rules:
+    # Test files may have longer table-driven tests and duplicated setup.
+    - path: _test\.go
+      linters: [gocognit, gocyclo, dupl, gosec, unparam, errcheck]
+    # Generated files (none yet, but future-proof).
+    - path: \.gen\.go
+      linters: [revive]
+  max-issues-per-linter: 0
+  max-same-issues: 0

@@ -1,0 +1,15 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: uniqlo-deal-hunter
+servers: 1
+agents: 0
+kubeAPI:
+  # Windows-friendly explicit port binding; k3d's default sometimes fails.
+  host: 127.0.0.1
+  hostIP: 127.0.0.1
+  hostPort: "6550"
+registries:
+  create:
+    name: registry.localhost
+    hostPort: "5000"

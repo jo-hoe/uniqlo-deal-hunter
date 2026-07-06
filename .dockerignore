@@ -1,0 +1,12 @@
+# Ignore everything, then whitelist what the build actually needs.
+# Keeps the build context small and prevents leaking dev files into the image.
+*
+
+!cmd/
+!internal/
+!go.mod
+!go.sum
+
+# never include these even under whitelisted dirs
+**/*_test.go
+**/testdata/

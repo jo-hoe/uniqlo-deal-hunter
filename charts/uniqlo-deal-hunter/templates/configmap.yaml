@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "uniqlo-deal-hunter.fullname" . }}-config
+  labels:
+    {{- include "uniqlo-deal-hunter.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    source:
+      kind: {{ .Values.source.kind }}
+      baseURL: {{ .Values.source.baseURL | quote }}
+      region: {{ .Values.source.region | quote }}
+      language: {{ .Values.source.language | quote }}
+      gender: {{ .Values.source.gender | quote }}
+      sizeCodes: {{ toJson .Values.source.sizeCodes }}
+      sort: {{ .Values.source.sort }}
+      clientID: {{ .Values.source.clientID | quote }}
+      requestsPerSecond: {{ .Values.source.requestsPerSecond }}
+      timeout: {{ .Values.source.timeout | quote }}
+      maxRetries: {{ .Values.source.maxRetries }}
+      {{- with .Values.source.userAgent }}
+      userAgent: {{ . | quote }}
+      {{- end }}
+
+    rules:
+      {{- range .Values.rules }}
+      - name: {{ .name | quote }}
+        {{- if .namePattern }}
+        namePattern: {{ .namePattern | quote }}
+        {{- end }}
+        {{- if .sizes }}
+        sizes: {{ toJson .sizes }}
+        {{- end }}
+        {{- if .maxPriceEUR }}
+        maxPriceEUR: {{ .maxPriceEUR }}
+        {{- end }}
+        {{- if .minDiscountPercent }}
+        minDiscountPercent: {{ .minDiscountPercent }}
+        {{- end }}
+      {{- end }}
+
+    notifier:
+      kind: {{ .Values.notifier.kind }}
+      smtp:
+        host: {{ .Values.notifier.smtp.host | quote }}
+        port: {{ .Values.notifier.smtp.port }}
+        startTLS: {{ .Values.notifier.smtp.startTLS }}
+        from: {{ .Values.notifier.smtp.from | quote }}
+        to: {{ toJson .Values.notifier.smtp.to }}
+        username: {{ .Values.notifier.smtp.username | quote }}
+        passwordFile: /run/secrets/smtp/{{ .Values.notifier.smtp.passwordSecret.key }}
+        timeout: {{ .Values.notifier.smtp.timeout | quote }}
+
+    store:
+      kind: sqlite
+      path: /var/lib/uniqlo-deal-hunter/state.db
+      retentionDays: {{ .Values.persistence.retentionDays }}
+
+    logging:
+      level: {{ .Values.logging.level | quote }}

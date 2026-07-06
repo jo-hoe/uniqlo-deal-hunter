@@ -1,0 +1,19 @@
+apiVersion: v2
+name: uniqlo-deal-hunter
+description: A Kubernetes-native deal hunter for the Uniqlo DE online store.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.25.0"
+home: https://github.com/jo-hoe/uniqlo-deal-hunter
+sources:
+  - https://github.com/jo-hoe/uniqlo-deal-hunter
+maintainers:
+  - name: jo-hoe
+    url: https://github.com/jo-hoe
+keywords:
+  - deals
+  - uniqlo
+  - cronjob
+  - scraper
+  - smtp

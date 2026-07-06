@@ -30,3 +30,17 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Local build/test artifacts
+/bin/
+coverage.out
+
+# SQLite runtime state (WAL + shm sidecars included)
+*.db
+*.db-wal
+*.db-shm
+
+# Dev-only secrets — never commit real credentials.
+# The placeholder file exists so `make run` works out of the box; users
+# overwrite it with their SMTP password locally.
+dev/smtp-password

@@ -1,0 +1,13 @@
+{{ include "uniqlo-deal-hunter.fullname" . }} installed successfully.
+
+The CronJob will run on: {{ .Values.schedule | quote }}
+  {{- with .Values.timeZone }} (timezone: {{ . }}){{- end }}
+
+Trigger a one-off run for testing:
+  kubectl -n {{ .Release.Namespace }} create job --from=cronjob/{{ include "uniqlo-deal-hunter.fullname" . }} {{ include "uniqlo-deal-hunter.fullname" . }}-manual-$(date +%s)
+
+Watch logs:
+  kubectl -n {{ .Release.Namespace }} logs -f -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Make sure the SMTP password Secret exists:
+  kubectl -n {{ .Release.Namespace }} get secret {{ .Values.notifier.smtp.passwordSecret.name }}

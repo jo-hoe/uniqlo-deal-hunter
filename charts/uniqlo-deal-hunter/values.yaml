@@ -1,0 +1,180 @@
+# Default values for uniqlo-deal-hunter.
+# This chart installs a Kubernetes CronJob that runs the deal-hunter binary
+# on a schedule. State is persisted to a PVC-backed SQLite database.
+
+# -- Container image settings.
+image:
+  # -- The image repository.
+  repository: ghcr.io/jo-hoe/uniqlo-deal-hunter
+  # -- Image pull policy.
+  pullPolicy: IfNotPresent
+  # -- Image tag; defaults to Chart.AppVersion if empty.
+  tag: ""
+
+# -- Names of image pull secrets to attach to the pod. Objects must exist in
+# the same namespace.
+imagePullSecrets: []
+
+# -- Override the chart name in generated resource names.
+nameOverride: ""
+# -- Fully override the release-derived fullname.
+fullnameOverride: ""
+
+serviceAccount:
+  # -- Create a dedicated ServiceAccount.
+  create: true
+  # -- Extra annotations for the ServiceAccount.
+  annotations: {}
+  # -- Explicit ServiceAccount name; auto-generated when empty.
+  name: ""
+
+# -- Cron schedule for the CronJob (in --time.location TZ if timeZone is set).
+schedule: "0 8,20 * * *"
+# -- IANA time-zone name for the schedule; empty means the cluster default.
+timeZone: ""
+# -- CronJob concurrency policy: Allow, Forbid, or Replace.
+concurrencyPolicy: Forbid
+# -- Number of successful finished jobs to keep.
+successfulJobsHistoryLimit: 3
+# -- Number of failed finished jobs to keep.
+failedJobsHistoryLimit: 3
+# -- Restart policy for the pod: OnFailure or Never (CronJob requirement).
+restartPolicy: OnFailure
+# -- Seconds a finished Job is kept before automatic deletion.
+ttlSecondsAfterFinished: 3600
+# -- The Job's activeDeadlineSeconds; the pod is killed after this many seconds.
+activeDeadlineSeconds: 900
+# -- Number of retries the Job performs before giving up.
+backoffLimit: 2
+
+# -- Pod-level security context.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+# -- Container-level security context.
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+# -- Compute resources for the container.
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# -- Node selector for the pod.
+nodeSelector: {}
+# -- Tolerations for the pod.
+tolerations: []
+# -- Affinity rules for the pod.
+affinity: {}
+# -- Extra environment variables for the container.
+extraEnv: []
+# -- Extra volume mounts.
+extraVolumeMounts: []
+# -- Extra volumes.
+extraVolumes: []
+
+# -- The source configuration is passed through to the app's YAML.
+source:
+  # -- Source kind; only "uniqlo" is supported today.
+  kind: uniqlo
+  # -- Base URL of the Uniqlo storefront.
+  baseURL: https://www.uniqlo.com
+  # -- Region path segment (e.g. "de").
+  region: de
+  # -- Language path segment (e.g. "en").
+  language: en
+  # -- Gender segment to filter by. One of: men, women, kids, baby.
+  gender: men
+  # -- Size codes to pre-filter the listing by (URL query parameter).
+  sizeCodes: ["MSC027", "SMA004"]
+  # -- Sort parameter forwarded to the listing endpoint.
+  sort: 2
+  # -- Required x-fr-clientid header value.
+  clientID: uq.de.web-spa
+  # -- HTTP request rate limit.
+  requestsPerSecond: 1
+  # -- Per-request HTTP timeout.
+  timeout: 15s
+  # -- Max retries on 5xx/429 responses.
+  maxRetries: 3
+  # -- User-Agent request header. Uniqlo's Akamai front-end rejects
+  # obviously-bot-shaped UAs with HTTP/2 INTERNAL_ERROR, so a modern-Chrome
+  # UA is required in practice. Bump the Chrome major version yearly.
+  # Set to an empty string to fall back to the binary's compiled-in default.
+  userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+
+# -- Named filter rules. A deal alerts if it matches ANY rule; a rule
+# matches iff every non-empty field inside it matches.
+rules:
+  - name: cheap-socks
+    namePattern: "(?i)socks"
+    sizes: []
+    maxPriceEUR: 5.0
+    minDiscountPercent: 0
+
+# -- Notifier configuration. Only SMTP is supported today.
+notifier:
+  kind: smtp
+  smtp:
+    # -- SMTP host.
+    host: smtp.example.com
+    # -- SMTP port (typically 587 for STARTTLS).
+    port: 587
+    # -- Whether to negotiate STARTTLS after EHLO.
+    startTLS: true
+    # -- From address on the outgoing message.
+    from: deals@example.com
+    # -- One or more recipient addresses.
+    to:
+      - me@example.com
+    # -- SMTP AUTH username.
+    username: deals@example.com
+    # -- Timeout applied to the entire SMTP dialog.
+    timeout: 15s
+    # -- Reference to a Kubernetes Secret carrying the SMTP password.
+    # The secret must contain the key given by `passwordSecret.key`. The
+    # chart NEVER puts the password into a ConfigMap or an env var — the
+    # Secret is mounted as a file at /run/secrets/smtp/<key>.
+    passwordSecret:
+      # -- Name of an existing Secret.
+      name: uniqlo-smtp
+      # -- Key inside that Secret containing the password.
+      key: password
+      # -- If true, the chart creates the Secret itself using `passwordSecret.value`.
+      # Prefer supplying the Secret out-of-band (e.g. via sealed-secrets or
+      # external-secrets) and leaving this false.
+      create: false
+      # -- Plaintext password used only when `create` is true (dev / bootstrap).
+      value: ""
+
+# -- Persistence for the SQLite state DB.
+persistence:
+  # -- Enable PVC-backed persistence. When false, state is lost every run.
+  enabled: true
+  # -- StorageClass name; empty uses the cluster default.
+  storageClass: ""
+  # -- Access modes.
+  accessModes: [ReadWriteOnce]
+  # -- Requested size.
+  size: 100Mi
+  # -- Existing PVC name to reuse (skips creating a new one).
+  existingClaim: ""
+  # -- Days of state to retain before pruning old rows.
+  retentionDays: 90
+
+# -- Logging configuration.
+logging:
+  # -- Level: debug, info, warn, error.
+  level: info

@@ -1,0 +1,43 @@
+# Local dev config for `make run`. Point notifier at a local mail sink like
+# Mailhog (docker run -p 1025:1025 -p 8025:8025 mailhog/mailhog) or Mailtrap.
+# The password file is created by `make run` prep or you can point it at any
+# accessible file.
+
+source:
+  kind: uniqlo
+  baseURL: https://www.uniqlo.com
+  region: de
+  language: en
+  gender: men
+  sizeCodes: ["MSC027", "SMA004"]
+  sort: 2
+  clientID: uq.de.web-spa
+  requestsPerSecond: 1
+  timeout: 15s
+  maxRetries: 3
+
+rules:
+  - name: cheap-socks
+    namePattern: "(?i)socks"
+    maxPriceEUR: 5.0
+  - name: big-discount
+    minDiscountPercent: 40
+
+notifier:
+  kind: smtp
+  smtp:
+    host: 127.0.0.1
+    port: 1025           # Mailhog default
+    startTLS: false
+    from: deals@local
+    to: ["me@local"]
+    username: ""         # Mailhog needs no auth
+    passwordFile: ./dev/smtp-password
+
+store:
+  kind: sqlite
+  path: ./dev/state.db
+  retentionDays: 30
+
+logging:
+  level: debug

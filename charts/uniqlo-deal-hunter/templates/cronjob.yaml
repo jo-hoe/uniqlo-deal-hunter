@@ -1,0 +1,88 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "uniqlo-deal-hunter.fullname" . }}
+  labels:
+    {{- include "uniqlo-deal-hunter.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.schedule | quote }}
+  {{- with .Values.timeZone }}
+  timeZone: {{ . | quote }}
+  {{- end }}
+  concurrencyPolicy: {{ .Values.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.backoffLimit }}
+      activeDeadlineSeconds: {{ .Values.activeDeadlineSeconds }}
+      ttlSecondsAfterFinished: {{ .Values.ttlSecondsAfterFinished }}
+      template:
+        metadata:
+          labels:
+            {{- include "uniqlo-deal-hunter.selectorLabels" . | nindent 12 }}
+        spec:
+          serviceAccountName: {{ include "uniqlo-deal-hunter.serviceAccountName" . }}
+          restartPolicy: {{ .Values.restartPolicy }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: {{ .Chart.Name }}
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              securityContext:
+                {{- toYaml .Values.securityContext | nindent 16 }}
+              env:
+                - name: CONFIG_PATH
+                  value: /run/config/config.yaml
+                {{- with .Values.extraEnv }}
+                {{- toYaml . | nindent 16 }}
+                {{- end }}
+              volumeMounts:
+                - name: config
+                  mountPath: /run/config
+                  readOnly: true
+                - name: smtp
+                  mountPath: /run/secrets/smtp
+                  readOnly: true
+                {{- if .Values.persistence.enabled }}
+                - name: state
+                  mountPath: /var/lib/uniqlo-deal-hunter
+                {{- end }}
+                {{- with .Values.extraVolumeMounts }}
+                {{- toYaml . | nindent 16 }}
+                {{- end }}
+              resources:
+                {{- toYaml .Values.resources | nindent 16 }}
+          volumes:
+            - name: config
+              configMap:
+                name: {{ include "uniqlo-deal-hunter.fullname" . }}-config
+            - name: smtp
+              secret:
+                secretName: {{ .Values.notifier.smtp.passwordSecret.name }}
+                defaultMode: 0400
+            {{- if .Values.persistence.enabled }}
+            - name: state
+              persistentVolumeClaim:
+                claimName: {{ include "uniqlo-deal-hunter.pvcName" . }}
+            {{- end }}
+            {{- with .Values.extraVolumes }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
