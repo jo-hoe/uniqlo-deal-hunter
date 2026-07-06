@@ -10,16 +10,36 @@ Watch logs:
   kubectl -n {{ .Release.Namespace }} logs -f -l app.kubernetes.io/instance={{ .Release.Name }}
 
 {{- if .Values.notifier.smtp.auth.enabled }}
+
 SMTP AUTH is ENABLED. The Secret mounted at /run/secrets/smtp is:
   kubectl -n {{ .Release.Namespace }} get secret {{ include "uniqlo-deal-hunter.smtpSecretName" . }}
 {{- else }}
+
 SMTP AUTH is DISABLED. The pod will connect to
 {{ .Values.notifier.smtp.host }}:{{ .Values.notifier.smtp.port }} without any password.
 {{- end }}
 
-{{- if not .Values.persistence.enabled }}
+{{- if .Values.persistence.enabled }}
 
-WARNING: persistence is DISABLED. State is kept in an in-memory SQLite
-database and lost between runs — every discovered deal will be re-notified
-on the next CronJob run.
+Persistence is ENABLED. Dedup state is kept in a PVC-backed SQLite DB at
+/var/lib/uniqlo-deal-hunter/state.db; each deal is announced at most once.
+  kubectl -n {{ .Release.Namespace }} get pvc {{ include "uniqlo-deal-hunter.pvcName" . }}
+{{- else }}
+
+##############################################################################
+# NOTICE: persistence is DISABLED (chart default).                           #
+#                                                                            #
+# Dedup state lives in an in-memory SQLite database and is WIPED on every    #
+# pod restart. Every deal that is still on sale will be re-notified on the   #
+# next CronJob run — including all deals seen on previous runs.              #
+#                                                                            #
+# To persist state across pod restarts and receive each deal at most once,   #
+# reinstall with:                                                            #
+#                                                                            #
+#   helm upgrade {{ .Release.Name }} <chart> --set persistence.enabled=true  #
+#                                                                            #
+# Make sure your cluster has a default StorageClass, or set                  #
+# --set persistence.storageClass=<name>.                                     #
+##############################################################################
 {{- end }}
+

@@ -2,8 +2,8 @@ apiVersion: v2
 name: uniqlo-deal-hunter
 description: A Kubernetes-native deal hunter for the Uniqlo online store.
 type: application
-version: 0.3.0
-appVersion: "0.2.0"
+version: 0.4.0
+appVersion: "0.3.0"
 kubeVersion: ">=1.27.0"
 home: https://github.com/jo-hoe/uniqlo-deal-hunter
 sources:

@@ -1,6 +1,6 @@
 # uniqlo-deal-hunter
 
-![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.2.0](https://img.shields.io/badge/AppVersion-0.2.0-informational?style=flat-square)
+![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.3.0](https://img.shields.io/badge/AppVersion-0.3.0-informational?style=flat-square)
 
 A Kubernetes-native deal hunter for the Uniqlo online store.
 
@@ -56,9 +56,9 @@ Kubernetes: `>=1.27.0`
 | notifier.smtp.startTLS | bool | `true` | Whether to negotiate STARTTLS after EHLO. |
 | notifier.smtp.timeout | string | `"15s"` | Timeout applied to the entire SMTP dialog. |
 | notifier.smtp.to | list | `["me@example.com"]` | One or more recipient addresses. |
-| persistence | object | `{"accessModes":["ReadWriteOnce"],"enabled":true,"existingClaim":"","retentionDays":90,"size":"100Mi","storageClass":""}` | Persistence for the SQLite state DB.  When `enabled: true`, the chart creates a PVC and mounts it into the pod at /var/lib/uniqlo-deal-hunter. State survives pod restarts, so a deal is announced at most once.  When `enabled: false`, the app runs SQLite in-memory (`:memory:`). NO PVC is created and NO volume is mounted. Every pod restart wipes the dedup state, so any deal that is still on sale will be announced again on the next CronJob run. Choose this mode only when re-notifications are acceptable or when the CronJob runs infrequently enough that duplicates are tolerable. |
+| persistence | object | `{"accessModes":["ReadWriteOnce"],"enabled":false,"existingClaim":"","retentionDays":90,"size":"100Mi","storageClass":""}` | Persistence for the SQLite state DB.  By default persistence is DISABLED: the app runs SQLite in-memory (`:memory:`) and dedup state is wiped on every pod restart. Every deal still in stock will be re-notified when the next CronJob run fires. This keeps the chart trivially installable in any cluster without needing a StorageClass or a persistent-volume plumbing decision.  For long-lived dedup across pod restarts, set `enabled: true` — the chart then provisions a PVC and mounts it at /var/lib/uniqlo-deal-hunter. |
 | persistence.accessModes | list | `["ReadWriteOnce"]` | Access modes. Ignored when `enabled: false`. |
-| persistence.enabled | bool | `true` | Enable PVC-backed persistence. When false, state is lost every run. |
+| persistence.enabled | bool | `false` | Enable PVC-backed persistence. Defaults to false so the chart installs cleanly without a StorageClass; enable it to survive restarts. |
 | persistence.existingClaim | string | `""` | Existing PVC name to reuse (skips creating a new one). Ignored when `enabled: false`. |
 | persistence.retentionDays | int | `90` | Days of state to retain before pruning old rows. Also applied to the in-memory store, though it never survives long enough to matter. |
 | persistence.size | string | `"100Mi"` | Requested size. Ignored when `enabled: false`. |
@@ -72,7 +72,7 @@ Kubernetes: `>=1.27.0`
 | serviceAccount.annotations | object | `{}` | Extra annotations for the ServiceAccount. |
 | serviceAccount.create | bool | `true` | Create a dedicated ServiceAccount. |
 | serviceAccount.name | string | `""` | Explicit ServiceAccount name; auto-generated when empty. |
-| source | object | `{"baseURL":"https://www.uniqlo.com","clientID":"uq.de.web-spa","gender":"men","kind":"uniqlo","language":"en","maxRetries":3,"region":"de","requestsPerSecond":1,"sizeCodes":["MSC027","SMA004"],"sort":2,"timeout":"15s","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"}` | The source configuration is passed through to the app's YAML. |
+| source | object | `{"baseURL":"https://www.uniqlo.com","clientID":"uq.de.web-spa","gender":"men","kind":"uniqlo","language":"en","maxRetries":3,"region":"de","requestsPerSecond":1,"sizeCodes":["MSC027","SMA004"],"sort":2,"timeout":"15s"}` | The source configuration is passed through to the app's YAML. |
 | source.baseURL | string | `"https://www.uniqlo.com"` | Base URL of the Uniqlo storefront. |
 | source.clientID | string | `"uq.de.web-spa"` | Required x-fr-clientid header value. |
 | source.gender | string | `"men"` | Gender segment to filter by. One of: men, women, kids, baby. |
@@ -84,7 +84,6 @@ Kubernetes: `>=1.27.0`
 | source.sizeCodes | list | `["MSC027","SMA004"]` | Size codes to pre-filter the listing by (URL query parameter). |
 | source.sort | int | `2` | Sort parameter forwarded to the listing endpoint. |
 | source.timeout | string | `"15s"` | Per-request HTTP timeout. |
-| source.userAgent | string | `"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"` | User-Agent request header. Uniqlo's Akamai front-end rejects obviously-bot-shaped UAs with HTTP/2 INTERNAL_ERROR, so a modern-Chrome UA is required in practice. Bump the Chrome major version yearly. Set to an empty string to fall back to the binary's compiled-in default. |
 | successfulJobsHistoryLimit | int | `3` | Number of successful finished jobs to keep. |
 | timeZone | string | `"Europe/Berlin"` | IANA time-zone name (e.g. "Europe/Berlin", "America/New_York", "Asia/Tokyo") in which `schedule` is interpreted. Requires Kubernetes 1.27+. When empty, the cluster's default is used. Since this app is Uniqlo-DE-shaped, a European TZ is the sensible default. |
 | tolerations | list | `[]` | Tolerations for the pod. |

@@ -35,6 +35,16 @@ func testConfig(base string) config.Source {
 	}
 }
 
+// newTestClient builds a Client for tests and disables the live
+// user-agent resolver so tests never touch chromiumdash.appspot.com.
+// The compiled-in fallback (cfg.UserAgent) is used instead.
+func newTestClient(t *testing.T, cfg config.Source, logger *slog.Logger) *Client {
+	t.Helper()
+	c := NewClient(cfg, logger)
+	c.userAgent.resolver = nil
+	return c
+}
+
 // versionHandler responds to the storefront-root GET that the client makes
 // once per instance to discover x-fr-client-version. Composed with the
 // endpoint-specific handler used by each test.
@@ -97,7 +107,7 @@ func TestFetchDeals_SinglePage(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient(testConfig(srv.URL), nil)
+	c := newTestClient(t, testConfig(srv.URL), nil)
 	deals, err := c.FetchDeals(context.Background())
 	if err != nil {
 		t.Fatalf("FetchDeals: %v", err)
@@ -134,7 +144,7 @@ func TestFetchDeals_Pagination(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient(testConfig(srv.URL), nil)
+	c := newTestClient(t, testConfig(srv.URL), nil)
 	deals, err := c.FetchDeals(context.Background())
 	if err != nil {
 		t.Fatalf("FetchDeals: %v", err)
@@ -162,7 +172,7 @@ func TestFetchDeals_RetryOn5xx(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient(testConfig(srv.URL), nil)
+	c := newTestClient(t, testConfig(srv.URL), nil)
 	deals, err := c.FetchDeals(context.Background())
 	if err != nil {
 		t.Fatalf("FetchDeals: %v", err)
@@ -178,7 +188,7 @@ func TestFetchDeals_FailsAfterRetries(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient(testConfig(srv.URL), nil)
+	c := newTestClient(t, testConfig(srv.URL), nil)
 	_, err := c.FetchDeals(context.Background())
 	if err == nil {
 		t.Fatal("expected error")
@@ -216,7 +226,7 @@ func TestResolveSizes_CollapsesColorsAndDetectsStock(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient(testConfig(srv.URL), nil)
+	c := newTestClient(t, testConfig(srv.URL), nil)
 	sizes, err := c.ResolveSizes(context.Background(), deal.ProductID("E1"))
 	if err != nil {
 		t.Fatalf("ResolveSizes: %v", err)
@@ -261,7 +271,7 @@ func TestFetchDeals_LogsAndSkipsMalformedItem(t *testing.T) {
 
 	var logBuf bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	c := NewClient(testConfig(srv.URL), logger)
+	c := newTestClient(t, testConfig(srv.URL), logger)
 
 	deals, err := c.FetchDeals(context.Background())
 	if err != nil {
@@ -285,7 +295,7 @@ func TestGetJSON_ContextCancel(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewClient(testConfig(srv.URL), nil)
+	c := newTestClient(t, testConfig(srv.URL), nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 	_, err := c.FetchDeals(ctx)

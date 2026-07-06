@@ -68,14 +68,14 @@ jobs:
           version: v3.16.2
       - name: helm lint
         run: helm lint charts/uniqlo-deal-hunter
+      - name: helm template (defaults — no PVC, needs auth.enabled=false to skip Secret)
+        run: helm template test charts/uniqlo-deal-hunter --set notifier.smtp.auth.enabled=false
       - name: helm template (existing-secret mode)
         run: helm template test charts/uniqlo-deal-hunter --set notifier.smtp.auth.existingSecret.name=x
       - name: helm template (chart-created-secret mode)
         run: helm template test charts/uniqlo-deal-hunter --set notifier.smtp.auth.password=xxx
-      - name: helm template (no-auth mode)
-        run: helm template test charts/uniqlo-deal-hunter --set notifier.smtp.auth.enabled=false
-      - name: helm template (in-memory store mode)
-        run: helm template test charts/uniqlo-deal-hunter --set notifier.smtp.auth.enabled=false --set persistence.enabled=false
+      - name: helm template (PVC-backed persistence)
+        run: helm template test charts/uniqlo-deal-hunter --set notifier.smtp.auth.enabled=false --set persistence.enabled=true
       - name: helm-docs drift check
         run: |
           docker run --rm --volume "$PWD/charts:/helm-docs" jnorwood/helm-docs:v1.14.2

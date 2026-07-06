@@ -20,7 +20,7 @@ make run           # runs one pass against dev/config.yaml
 ```bash
 helm install uniqlo-deal-hunter \
   oci://ghcr.io/jo-hoe/charts/uniqlo-deal-hunter \
-  --version 0.3.0 \
+  --version 0.4.0 \
   -f my-values.yaml
 ```
 

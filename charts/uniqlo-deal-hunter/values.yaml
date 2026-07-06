@@ -114,11 +114,6 @@ source:
   timeout: 15s
   # -- Max retries on 5xx/429 responses.
   maxRetries: 3
-  # -- User-Agent request header. Uniqlo's Akamai front-end rejects
-  # obviously-bot-shaped UAs with HTTP/2 INTERNAL_ERROR, so a modern-Chrome
-  # UA is required in practice. Bump the Chrome major version yearly.
-  # Set to an empty string to fall back to the binary's compiled-in default.
-  userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
 # -- Named filter rules. A deal alerts if it matches ANY rule; a rule
 # matches iff every non-empty field inside it matches.
@@ -185,19 +180,18 @@ notifier:
 
 # -- Persistence for the SQLite state DB.
 #
-# When `enabled: true`, the chart creates a PVC and mounts it into the pod
-# at /var/lib/uniqlo-deal-hunter. State survives pod restarts, so a deal is
-# announced at most once.
+# By default persistence is DISABLED: the app runs SQLite in-memory
+# (`:memory:`) and dedup state is wiped on every pod restart. Every deal
+# still in stock will be re-notified when the next CronJob run fires.
+# This keeps the chart trivially installable in any cluster without
+# needing a StorageClass or a persistent-volume plumbing decision.
 #
-# When `enabled: false`, the app runs SQLite in-memory (`:memory:`). NO PVC
-# is created and NO volume is mounted. Every pod restart wipes the dedup
-# state, so any deal that is still on sale will be announced again on the
-# next CronJob run. Choose this mode only when re-notifications are
-# acceptable or when the CronJob runs infrequently enough that duplicates
-# are tolerable.
+# For long-lived dedup across pod restarts, set `enabled: true` — the
+# chart then provisions a PVC and mounts it at /var/lib/uniqlo-deal-hunter.
 persistence:
-  # -- Enable PVC-backed persistence. When false, state is lost every run.
-  enabled: true
+  # -- Enable PVC-backed persistence. Defaults to false so the chart
+  # installs cleanly without a StorageClass; enable it to survive restarts.
+  enabled: false
   # -- StorageClass name; empty uses the cluster default. Ignored when `enabled: false`.
   storageClass: ""
   # -- Access modes. Ignored when `enabled: false`.

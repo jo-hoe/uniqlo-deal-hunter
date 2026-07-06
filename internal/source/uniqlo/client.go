@@ -24,11 +24,12 @@ import (
 
 // Client talks to the Uniqlo commerce API.
 type Client struct {
-	http    *http.Client
-	limiter *rate.Limiter
-	cfg     config.Source
-	logger  *slog.Logger
-	version *cachedVersion
+	http      *http.Client
+	limiter   *rate.Limiter
+	cfg       config.Source
+	logger    *slog.Logger
+	version   *cachedVersion
+	userAgent *cachedUserAgent
 }
 
 // pageSize is the maximum items the Uniqlo API returns per page.
@@ -39,28 +40,42 @@ const pageSize = 36
 // compiled-in default than delay the run.
 const versionDiscoveryTimeout = 5 * time.Second
 
+// userAgentDiscoveryTimeout bounds the one-off User-Agent resolution.
+const userAgentDiscoveryTimeout = 5 * time.Second
+
 // NewClient constructs a Client from the source-config block. The returned
 // Client is safe for the CronJob's single-goroutine use pattern.
 // A nil logger is replaced with slog.Default() so callers may pass nil.
 //
-// The client resolves the Uniqlo SPA build version once on first use by
-// fetching the storefront root and parsing window.__BUILD_VERSION__.
-// If discovery fails, cfg.ClientVersion is used as a stable fallback.
+// On first use the client performs two one-off probes and caches the
+// results for the process lifetime:
+//   - x-fr-client-version: fetched from the Uniqlo storefront's
+//     window.__BUILD_VERSION__ (falls back to cfg.ClientVersion).
+//   - User-Agent: fetched from Google's Chromium Dashboard, then
+//     formatted as the current Chrome-on-Windows UA (falls back to
+//     cfg.UserAgent, itself defaulting to config.DefaultUserAgent).
 func NewClient(cfg config.Source, logger *slog.Logger) *Client {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	httpClient := &http.Client{Timeout: cfg.Timeout}
-	resolver := newHTTPVersionResolver(httpClient, cfg.BaseURL, cfg.Region, cfg.Language, cfg.UserAgent, logger)
+	verResolver := newHTTPVersionResolver(httpClient, cfg.BaseURL, cfg.Region, cfg.Language, cfg.UserAgent, logger)
+	uaResolver := newHTTPUserAgentResolver(httpClient, logger)
 	return &Client{
 		http:    httpClient,
 		limiter: rate.NewLimiter(rate.Limit(cfg.RequestsPerSecond), 1),
 		cfg:     cfg,
 		logger:  logger,
 		version: &cachedVersion{
-			resolver: resolver,
+			resolver: verResolver,
 			fallback: cfg.ClientVersion,
 			timeout:  versionDiscoveryTimeout,
+			logger:   logger,
+		},
+		userAgent: &cachedUserAgent{
+			resolver: uaResolver,
+			fallback: cfg.UserAgent,
+			timeout:  userAgentDiscoveryTimeout,
 			logger:   logger,
 		},
 	}
@@ -131,7 +146,7 @@ func (c *Client) doOnce(ctx context.Context, target string) (int, []byte, error)
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Accept-Language", "en-DE,en;q=0.9")
-	req.Header.Set("User-Agent", c.cfg.UserAgent)
+	req.Header.Set("User-Agent", c.userAgent.Get(ctx))
 	req.Header.Set("x-fr-clientid", c.cfg.ClientID)
 	if v := c.version.Get(ctx); v != "" {
 		req.Header.Set("x-fr-client-version", v)

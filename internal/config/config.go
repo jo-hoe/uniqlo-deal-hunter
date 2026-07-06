@@ -140,11 +140,13 @@ type Logging struct {
 	Level string `yaml:"level"`
 }
 
-// DefaultUserAgent is used when the operator does not override
-// source.userAgent in config. Uniqlo's Akamai front-end responds with
-// HTTP/2 INTERNAL_ERROR to obviously-bot-shaped UAs, so we ship a stable
-// modern-Chrome UA string. Bumping the Chrome major version once or twice
-// a year is enough; ownership sits with whoever bumps the Go module.
+// DefaultUserAgent is the compiled-in User-Agent, used ONLY as a fallback
+// when the Client's dynamic discovery from Google's Chromium Dashboard
+// fails at startup (e.g. no egress to chromiumdash.appspot.com). Under
+// normal conditions the client fetches the current Chrome Stable
+// milestone at runtime and formats a matching Windows UA. Bumping this
+// literal manually is not required; it exists only so the app degrades
+// gracefully in constrained networks.
 const DefaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
 	"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
