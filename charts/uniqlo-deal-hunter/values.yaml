@@ -28,10 +28,15 @@ serviceAccount:
   # -- Explicit ServiceAccount name; auto-generated when empty.
   name: ""
 
-# -- Cron schedule for the CronJob (in --time.location TZ if timeZone is set).
+# -- Cron schedule for the CronJob. Interpreted in `timeZone` when set,
+# otherwise in the kube-controller-manager's local time (UTC on most
+# managed clusters). Default fires at 08:00 and 20:00 local time.
 schedule: "0 8,20 * * *"
-# -- IANA time-zone name for the schedule; empty means the cluster default.
-timeZone: ""
+# -- IANA time-zone name (e.g. "Europe/Berlin", "America/New_York",
+# "Asia/Tokyo") in which `schedule` is interpreted. Requires Kubernetes
+# 1.27+. When empty, the cluster's default is used. Since this app is
+# Uniqlo-DE-shaped, a European TZ is the sensible default.
+timeZone: "Europe/Berlin"
 # -- CronJob concurrency policy: Allow, Forbid, or Replace.
 concurrencyPolicy: Forbid
 # -- Number of successful finished jobs to keep.
