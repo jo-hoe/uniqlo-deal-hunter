@@ -21,6 +21,8 @@ type Source interface {
 	FetchDeals(ctx context.Context) ([]deal.Candidate, error)
 
 	// ResolveSizes returns the authoritative per-size stock state for a
-	// specific product.
-	ResolveSizes(ctx context.Context, id deal.ProductID) ([]deal.Size, error)
+	// specific candidate. Implementations may rely on Candidate.ProviderRef
+	// (populated by the same source during FetchDeals) to address the
+	// upstream detail endpoint correctly.
+	ResolveSizes(ctx context.Context, c deal.Candidate) ([]deal.Size, error)
 }

@@ -167,8 +167,11 @@ func fakeUniqlo(t *testing.T) *httptest.Server {
 				"status": "ok",
 				"result": map[string]any{
 					"l2s": []map[string]any{
-						{"size": map[string]any{"code": "M", "name": "Medium"},
-							"color": map[string]string{"code": "C1"}, "sales": true, "stockStatusCode": "IN_STOCK"},
+						{"l2Id": "L1", "size": map[string]any{"code": "M", "name": "Medium"},
+							"color": map[string]string{"code": "C1"}, "sales": true},
+					},
+					"stocks": map[string]any{
+						"L1": map[string]any{"statusCode": "IN_STOCK", "quantity": 3},
 					},
 				},
 			})

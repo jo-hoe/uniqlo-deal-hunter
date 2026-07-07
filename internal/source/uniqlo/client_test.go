@@ -204,28 +204,28 @@ func TestResolveSizes_CollapsesColorsAndDetectsStock(t *testing.T) {
 				"result": map[string]any{
 					"l2s": []map[string]any{
 						{"l2Id": "1", "size": map[string]any{"code": "M", "name": "Medium"},
-							"color": map[string]string{"code": "R"}, "sales": true, "stockStatusCode": "IN_STOCK"},
+							"color": map[string]string{"code": "R"}, "sales": true},
 						{"l2Id": "2", "size": map[string]any{"code": "M", "name": "Medium"},
-							"color": map[string]string{"code": "B"}, "sales": true, "stockStatusCode": "OUT_OF_STOCK"},
+							"color": map[string]string{"code": "B"}, "sales": true},
 						{"l2Id": "3", "size": map[string]any{"code": "L", "name": "Large"},
-							"color": map[string]string{"code": "B"}, "sales": true, "stockStatusCode": "OUT_OF_STOCK"},
+							"color": map[string]string{"code": "B"}, "sales": true},
+					},
+					"stocks": map[string]any{
+						"1": map[string]any{"statusCode": "IN_STOCK", "quantity": 5},
+						"2": map[string]any{"statusCode": "OUT_OF_STOCK", "quantity": 0},
+						"3": map[string]any{"statusCode": "OUT_OF_STOCK", "quantity": 0},
 					},
 				},
 			})
 			return
 		}
-		// probe endpoint: return a product with priceGroup 00
-		writeJSON(t, w, map[string]any{
-			"status": "ok",
-			"result": map[string]any{
-				"items": []any{fakeItem("E1", "Socks", 10, 5, 5)},
-			},
-		})
+		// Any other endpoint (should not be hit — ResolveSizes no longer probes).
+		http.Error(w, "unexpected: "+r.URL.Path, http.StatusInternalServerError)
 	}))
 	defer srv.Close()
 
 	c := newTestClient(t, testConfig(srv.URL), nil)
-	sizes, err := c.ResolveSizes(context.Background(), deal.ProductID("E1"))
+	sizes, err := c.ResolveSizes(context.Background(), deal.Candidate{ProductID: "E1", ProviderRef: "00"})
 	if err != nil {
 		t.Fatalf("ResolveSizes: %v", err)
 	}
@@ -244,9 +244,11 @@ func TestResolveSizes_CollapsesColorsAndDetectsStock(t *testing.T) {
 	}
 }
 
-func TestResolveSizes_InStockWhenStockStatusCodeAbsent(t *testing.T) {
-	// The real Uniqlo API omits stockStatusCode for normally-stocked items.
-	// sales=true with no stockStatusCode must be treated as in-stock.
+func TestResolveSizes_OutOfStockWhenStockRowMissing(t *testing.T) {
+	// The real Uniqlo API leaves the row-level stockStatusCode empty even
+	// for out-of-stock items — authoritative stock is only in the top-level
+	// stocks map. A row without a matching entry must be treated as
+	// unavailable (that's how the frontend renders it).
 	srv := httptest.NewServer(versionHandler(t, func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/products/E1/price-groups/") {
 			writeJSON(t, w, map[string]any{
@@ -256,26 +258,84 @@ func TestResolveSizes_InStockWhenStockStatusCodeAbsent(t *testing.T) {
 						{"l2Id": "1", "size": map[string]any{"code": "M", "name": "Medium"},
 							"color": map[string]string{"code": "R"}, "sales": true},
 					},
+					// stocks: entry deliberately absent for l2Id "1".
+					"stocks": map[string]any{},
 				},
 			})
 			return
 		}
-		writeJSON(t, w, map[string]any{
-			"status": "ok",
-			"result": map[string]any{
-				"items": []any{fakeItem("E1", "Cashmere Jumper", 100, 80, 5)},
-			},
-		})
+		http.Error(w, "unexpected", http.StatusInternalServerError)
 	}))
 	defer srv.Close()
 
 	c := newTestClient(t, testConfig(srv.URL), nil)
-	sizes, err := c.ResolveSizes(context.Background(), deal.ProductID("E1"))
+	sizes, err := c.ResolveSizes(context.Background(), deal.Candidate{ProductID: "E1", ProviderRef: "00"})
 	if err != nil {
 		t.Fatalf("ResolveSizes: %v", err)
 	}
-	if len(sizes) != 1 || !sizes[0].InStock {
-		t.Errorf("expected M in stock when stockStatusCode absent, got %+v", sizes)
+	if len(sizes) != 1 || sizes[0].InStock {
+		t.Errorf("expected M reported OUT of stock when stocks map has no entry, got %+v", sizes)
+	}
+}
+
+func TestResolveSizes_HonoursDisableSizeChip(t *testing.T) {
+	// A stock row with IN_STOCK + positive quantity but disableSizeChip=true
+	// must be treated as unavailable (the PDP would grey out the chip).
+	srv := httptest.NewServer(versionHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/products/E1/price-groups/") {
+			writeJSON(t, w, map[string]any{
+				"status": "ok",
+				"result": map[string]any{
+					"l2s": []map[string]any{
+						{"l2Id": "1", "size": map[string]any{"code": "M", "name": "Medium"},
+							"color": map[string]string{"code": "R"}, "sales": true},
+					},
+					"stocks": map[string]any{
+						"1": map[string]any{"statusCode": "IN_STOCK", "quantity": 5, "disableSizeChip": true},
+					},
+				},
+			})
+			return
+		}
+		http.Error(w, "unexpected", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, testConfig(srv.URL), nil)
+	sizes, err := c.ResolveSizes(context.Background(), deal.Candidate{ProductID: "E1", ProviderRef: "00"})
+	if err != nil {
+		t.Fatalf("ResolveSizes: %v", err)
+	}
+	if len(sizes) != 1 || sizes[0].InStock {
+		t.Errorf("expected M reported OUT of stock when size chip disabled, got %+v", sizes)
+	}
+}
+
+func TestResolveSizes_UsesCandidatePriceGroup(t *testing.T) {
+	// The listing's priceGroup is authoritative for the discounted variant.
+	// Verify ResolveSizes hits the exact URL segment given by ProviderRef
+	// and does NOT fall back to "00".
+	var seenPath string
+	srv := httptest.NewServer(versionHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/l2s") {
+			seenPath = r.URL.Path
+			writeJSON(t, w, map[string]any{"status": "ok", "result": map[string]any{
+				"l2s":    []map[string]any{},
+				"stocks": map[string]any{},
+			}})
+			return
+		}
+		http.Error(w, "unexpected", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, testConfig(srv.URL), nil)
+	_, err := c.ResolveSizes(context.Background(), deal.Candidate{ProductID: "E1", ProviderRef: "02"})
+	if err != nil {
+		t.Fatalf("ResolveSizes: %v", err)
+	}
+	if !strings.Contains(seenPath, "/price-groups/02/l2s") {
+		t.Errorf("expected priceGroup 02 in URL, got %q", seenPath)
 	}
 }
 

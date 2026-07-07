@@ -44,3 +44,4 @@ coverage.out
 # The placeholder file exists so `make run` works out of the box; users
 # overwrite it with their SMTP password locally.
 dev/smtp-password
+.playwright-mcp/

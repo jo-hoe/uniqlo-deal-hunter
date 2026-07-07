@@ -225,15 +225,14 @@ const mimeBoundary = "uniqlo-deal-hunter-boundary"
 
 // dealView is the template input for one bullet.
 type dealView struct {
-	Name           string
-	URL            string
-	PromoEUR       string
-	BaseEUR        string
-	Lowest30dEUR   string
-	DiscountPct    int
-	MatchedRule    string
-	InStockSizes   string
-	Available      bool
+	Name         string
+	URL          string
+	PromoEUR     string
+	BaseEUR      string
+	DiscountPct  int
+	MatchedRule  string
+	InStockSizes string
+	Available    bool
 }
 
 // digestView is the top-level template input.
@@ -250,7 +249,6 @@ func buildView(matches []notifier.MatchedDeal) digestView {
 			URL:          m.Deal.URL,
 			PromoEUR:     m.Deal.PromoPrice.StringFixedBank(2),
 			BaseEUR:      m.Deal.BasePrice.StringFixedBank(2),
-			Lowest30dEUR: m.Deal.Lowest30dPrice.StringFixedBank(2),
 			DiscountPct:  m.Deal.DiscountPercent(),
 			MatchedRule:  m.RuleName,
 			InStockSizes: strings.Join(m.Deal.InStockSizeLabels(), ", "),
@@ -296,7 +294,7 @@ var (
   <li>
     <a href="{{.URL}}">{{.Name}}</a> —
     <strong>{{.PromoEUR}} €</strong>
-    (was {{.BaseEUR}} €, 30-day low {{.Lowest30dEUR}} €, −{{.DiscountPct}}%)
+    (was {{.BaseEUR}} €, −{{.DiscountPct}}%)
     <br/>
     rule: <code>{{.MatchedRule}}</code>
     {{if .Available}}| sizes in stock: {{.InStockSizes}}{{else}}| <em>no sizes in stock</em>{{end}}
@@ -308,7 +306,7 @@ var (
 	textTemplate = template.Must(template.New("digest.txt").Parse(
 		`{{.Count}} new deal(s):
 {{range .Deals}}
-- {{.Name}} — {{.PromoEUR}} EUR (was {{.BaseEUR}}, 30-day low {{.Lowest30dEUR}}, -{{.DiscountPct}}%)
+- {{.Name}} — {{.PromoEUR}} EUR (was {{.BaseEUR}}, -{{.DiscountPct}}%)
   rule: {{.MatchedRule}}{{if .Available}} | sizes: {{.InStockSizes}}{{else}} | no sizes in stock{{end}}
   {{.URL}}
 {{end}}

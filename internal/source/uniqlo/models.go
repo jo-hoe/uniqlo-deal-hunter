@@ -72,16 +72,22 @@ type size struct {
 }
 
 // l2sResponse is the shape of the l2s (per-color/size stock) endpoint.
+//
+// Stock is NOT on the l2 row itself: the API returns a top-level `stocks`
+// map keyed by l2Id. The row's `stockStatusCode` field is empty for
+// normally-stocked items so reading it as authoritative silently marks
+// everything in-stock. The `stocks` map is the only reliable signal.
 type l2sResponse struct {
 	Status string  `json:"status"`
 	Result *l2Data `json:"result"`
 }
 
 type l2Data struct {
-	L2s []l2 `json:"l2s"`
+	L2s    []l2                `json:"l2s"`
+	Stocks map[string]stockRow `json:"stocks"`
 }
 
-// l2 is a size-and-color line item.
+// l2 is a size-and-color line item. Stock lives elsewhere; see l2Data.Stocks.
 type l2 struct {
 	L2ID              string      `json:"l2Id"`
 	Color             color       `json:"color"`
@@ -91,6 +97,17 @@ type l2 struct {
 	StockStatusCode   string      `json:"stockStatusCode"`
 	CommunicationCode string      `json:"communicationCode"`
 	Prices            *pricesFlat `json:"prices"`
+}
+
+// stockRow is one entry of the l2s response's top-level stocks map.
+// The website treats `statusCode == "IN_STOCK"` combined with a positive
+// `quantity` and a non-disabled size chip as "purchasable".
+type stockRow struct {
+	StatusCode      string `json:"statusCode"`
+	Quantity        int    `json:"quantity"`
+	TransitStatus   string `json:"transitStatus"`
+	BackInStock     bool   `json:"backInStock"`
+	DisableSizeChip bool   `json:"disableSizeChip"`
 }
 
 // pricesFlat is a stripped price block on l2 rows (fields we don't need are omitted).

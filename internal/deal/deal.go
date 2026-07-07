@@ -48,8 +48,14 @@ type Candidate struct {
 	// Sizes is the listing's best-guess size availability. It is deliberately
 	// not trusted for the size filter — the runner overwrites it with the
 	// authoritative per-item detail.
-	Sizes     []Size
-	FetchedAt time.Time
+	Sizes []Size
+	// ProviderRef is a source-defined opaque hint passed back to
+	// Source.ResolveSizes. For Uniqlo it carries the item's priceGroup so the
+	// detail endpoint can be addressed correctly (different colour ranges live
+	// under different price groups and the "00" fallback returns unrelated
+	// data). Other sources are free to leave it empty.
+	ProviderRef string
+	FetchedAt   time.Time
 }
 
 // Deal is a Candidate that has been enriched with authoritative size data.

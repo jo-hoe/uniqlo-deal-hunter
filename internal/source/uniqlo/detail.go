@@ -10,40 +10,34 @@ import (
 // ResolveSizes implements source.Source. Fetches the authoritative per-size
 // stock state for a product across all its colors, then collapses to a
 // unique-by-size-code list: "in stock in ANY color" wins.
-func (c *Client) ResolveSizes(ctx context.Context, id deal.ProductID) ([]deal.Size, error) {
-	pg, err := c.probePriceGroup(ctx, id)
-	if err != nil {
-		return nil, err
+//
+// The correct priceGroup is passed in via Candidate.ProviderRef — populated
+// by FetchDeals from the listing endpoint. A stale probe endpoint used to be
+// consulted here but returns the base variant's priceGroup, which for many
+// products differs from the discounted variant and yields l2s data for the
+// wrong item entirely.
+func (c *Client) ResolveSizes(ctx context.Context, cand deal.Candidate) ([]deal.Size, error) {
+	pg := cand.ProviderRef
+	if pg == "" {
+		// Older callers or non-Uniqlo tests may leave the ref blank. "00" is
+		// the safest historical default; ResolveSizes may return an empty
+		// result if the guess is wrong, which the runner tolerates.
+		pg = "00"
 	}
 	var resp l2sResponse
-	if err := c.getJSON(ctx, c.detailURL(string(id), pg), &resp); err != nil {
-		return nil, fmt.Errorf("fetch l2s for %s: %w", id, err)
+	if err := c.getJSON(ctx, c.detailURL(string(cand.ProductID), pg), &resp); err != nil {
+		return nil, fmt.Errorf("fetch l2s for %s: %w", cand.ProductID, err)
 	}
 	if resp.Result == nil {
 		return nil, nil
 	}
-	return collapseSizes(resp.Result.L2s), nil
-}
-
-// probePriceGroup fetches the single-product endpoint to learn the price
-// group needed for the l2s URL. Uniqlo uses "00" for the vast majority of
-// products but the API is the source of truth.
-func (c *Client) probePriceGroup(ctx context.Context, id deal.ProductID) (string, error) {
-	target := fmt.Sprintf("%s/%s/api/commerce/v5/%s/products?productIds=%s&httpFailure=true",
-		c.cfg.BaseURL, c.cfg.Region, c.cfg.Language, id)
-	var resp productsResponse
-	if err := c.getJSON(ctx, target, &resp); err != nil {
-		return "", fmt.Errorf("probe product %s: %w", id, err)
-	}
-	if resp.Result != nil && len(resp.Result.Items) > 0 && resp.Result.Items[0].PriceGroup != "" {
-		return resp.Result.Items[0].PriceGroup, nil
-	}
-	return "00", nil
+	return collapseSizes(resp.Result.L2s, resp.Result.Stocks), nil
 }
 
 // collapseSizes reduces per-color-per-size rows to one deal.Size per size code.
-// A size is InStock iff any color offers it in stock.
-func collapseSizes(rows []l2) []deal.Size {
+// A size is InStock iff any color offers it in stock according to the stocks
+// map keyed by l2Id.
+func collapseSizes(rows []l2, stocks map[string]stockRow) []deal.Size {
 	seen := make(map[string]*deal.Size, len(rows))
 	order := make([]string, 0, len(rows))
 	for i := range rows {
@@ -57,7 +51,7 @@ func collapseSizes(rows []l2) []deal.Size {
 			seen[row.Size.Code] = s
 			order = append(order, row.Size.Code)
 		}
-		if isStocked(row) {
+		if isStocked(row, stocks) {
 			s.InStock = true
 		}
 	}
@@ -69,10 +63,28 @@ func collapseSizes(rows []l2) []deal.Size {
 }
 
 // isStocked reports whether a single l2 row is currently purchasable.
-// The API omits stockStatusCode for normally-stocked items; only an explicit
-// "OUT_OF_STOCK" value means the item is unavailable.
-func isStocked(row *l2) bool {
-	return row.Sales && row.StockStatusCode != "OUT_OF_STOCK"
+//
+// Uniqlo's real API returns stock info in a top-level `stocks` map keyed by
+// l2Id, NOT on the l2 row (the row's `stockStatusCode` is typically empty).
+// A size chip on the PDP is enabled iff:
+//   - the row's `sales` flag is true,
+//   - the matching stock entry says `IN_STOCK`,
+//   - quantity is positive, and
+//   - the size chip is not explicitly disabled.
+//
+// Any of these missing means the frontend renders the size as unavailable,
+// so the notifier must treat it the same way.
+func isStocked(row *l2, stocks map[string]stockRow) bool {
+	if !row.Sales {
+		return false
+	}
+	s, ok := stocks[row.L2ID]
+	if !ok {
+		// No stock row for this l2Id means the product page has nothing to
+		// render for it — treat as out of stock, not "unknown".
+		return false
+	}
+	return s.StatusCode == "IN_STOCK" && s.Quantity > 0 && !s.DisableSizeChip
 }
 
 // displayOrName picks the best user-facing size label available.

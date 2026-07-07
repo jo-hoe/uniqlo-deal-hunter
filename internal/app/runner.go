@@ -96,7 +96,7 @@ func (r *Runner) filterCandidates(cands []deal.Candidate) []notifier.MatchedDeal
 func (r *Runner) enrichAndReconfirm(ctx context.Context, matches []notifier.MatchedDeal) []notifier.MatchedDeal {
 	out := make([]notifier.MatchedDeal, 0, len(matches))
 	for _, m := range matches {
-		sizes, err := r.src.ResolveSizes(ctx, m.Deal.ProductID)
+		sizes, err := r.src.ResolveSizes(ctx, m.Deal)
 		if err != nil {
 			r.logger.Warn("resolve sizes failed, skipping",
 				"productId", m.Deal.ProductID, "err", err)

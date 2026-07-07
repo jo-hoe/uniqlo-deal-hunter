@@ -28,11 +28,11 @@ type fakeSource struct {
 func (f *fakeSource) FetchDeals(_ context.Context) ([]deal.Candidate, error) {
 	return f.candidates, f.fetchErr
 }
-func (f *fakeSource) ResolveSizes(_ context.Context, id deal.ProductID) ([]deal.Size, error) {
+func (f *fakeSource) ResolveSizes(_ context.Context, c deal.Candidate) ([]deal.Size, error) {
 	if f.sizesErr != nil {
 		return nil, f.sizesErr
 	}
-	return f.sizesByID[id], nil
+	return f.sizesByID[c.ProductID], nil
 }
 
 type recordingNotifier struct {

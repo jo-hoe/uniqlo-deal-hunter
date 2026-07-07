@@ -29,6 +29,11 @@ func mapItem(it *item, region, language, baseURL string) (deal.Candidate, error)
 		PromoPrice:     promo,
 		Lowest30dPrice: lowestPrice(it.Prices.LowestPriceDetails, base),
 		Sizes:          mapListingSizes(it.Sizes),
+		// The listing endpoint is the only place the correct priceGroup lives
+		// for the discounted colour of this item — the probe endpoint returns
+		// the base variant's priceGroup, which is often wrong. Carry it as an
+		// opaque hint so ResolveSizes can hit the right l2s URL.
+		ProviderRef: it.PriceGroup,
 	}
 	if err := c.Validate(); err != nil {
 		return deal.Candidate{}, err
