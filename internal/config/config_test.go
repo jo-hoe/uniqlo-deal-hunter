@@ -14,9 +14,7 @@ source:
   baseURL: https://www.uniqlo.com
   region: de
   language: en
-  gender: men
-  sizeCodes: ["MSC027"]
-  sort: 2
+  segment: men
   clientID: uq.de.web-spa
   requestsPerSecond: 1
 rules:
@@ -76,7 +74,7 @@ source:
   baseURL: https://x
   region: de
   language: en
-  gender: men
+  segment: men
   clientID: c
 rules:
   - name: r
@@ -96,31 +94,31 @@ store: {kind: sqlite, path: /db}
 func TestLoad_MissingRequired(t *testing.T) {
 	cases := map[string]string{
 		"no source kind": `
-source: {baseURL: x, region: de, language: en, gender: men, clientID: c}
+source: {baseURL: x, region: de, language: en, segment: men, clientID: c}
 rules: [{name: r}]
 notifier: {kind: smtp, smtp: {host: s, port: 25, from: a, to: [x], passwordFile: /p}}
 store: {kind: sqlite, path: /db}
 `,
 		"no rules": `
-source: {kind: uniqlo, baseURL: x, region: de, language: en, gender: men, clientID: c}
+source: {kind: uniqlo, baseURL: x, region: de, language: en, segment: men, clientID: c}
 rules: []
 notifier: {kind: smtp, smtp: {host: s, port: 25, from: a, to: [x], passwordFile: /p}}
 store: {kind: sqlite, path: /db}
 `,
 		"no smtp host": `
-source: {kind: uniqlo, baseURL: x, region: de, language: en, gender: men, clientID: c}
+source: {kind: uniqlo, baseURL: x, region: de, language: en, segment: men, clientID: c}
 rules: [{name: r}]
 notifier: {kind: smtp, smtp: {port: 25, from: a, to: [x], passwordFile: /p}}
 store: {kind: sqlite, path: /db}
 `,
 		"bad port": `
-source: {kind: uniqlo, baseURL: x, region: de, language: en, gender: men, clientID: c}
+source: {kind: uniqlo, baseURL: x, region: de, language: en, segment: men, clientID: c}
 rules: [{name: r}]
 notifier: {kind: smtp, smtp: {host: s, port: 0, from: a, to: [x], passwordFile: /p}}
 store: {kind: sqlite, path: /db}
 `,
 		"no store path": `
-source: {kind: uniqlo, baseURL: x, region: de, language: en, gender: men, clientID: c}
+source: {kind: uniqlo, baseURL: x, region: de, language: en, segment: men, clientID: c}
 rules: [{name: r}]
 notifier: {kind: smtp, smtp: {host: s, port: 25, from: a, to: [x], passwordFile: /p}}
 store: {kind: sqlite}
@@ -145,7 +143,7 @@ source:
   baseURL: https://x
   region: de
   language: en
-  gender: men
+  segment: men
   clientID: c
 rules: [{name: r}]
 notifier:
@@ -174,7 +172,7 @@ source:
   baseURL: https://x
   region: de
   language: en
-  gender: men
+  segment: men
   clientID: c
 rules: [{name: r}]
 notifier:

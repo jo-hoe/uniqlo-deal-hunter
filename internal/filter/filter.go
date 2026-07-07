@@ -58,8 +58,11 @@ func matchesName(r *config.Rule, d deal.Candidate) bool {
 	return re.MatchString(d.Name)
 }
 
-// matchesSizes is true when the rule sets no Sizes or when at least one of
-// the rule's sizes is in stock on the deal.
+// matchesSizes is true when the rule sets no Sizes, or when at least one of
+// the rule's sizes matches the deal. Stock availability is only checked when
+// at least one size reports InStock=true; if all sizes are InStock=false the
+// stock data is not yet fetched (listing stage) and we match on label/code
+// alone — the authoritative check happens in enrichAndReconfirm.
 func matchesSizes(r *config.Rule, d deal.Candidate) bool {
 	if len(r.Sizes) == 0 {
 		return true
@@ -68,8 +71,15 @@ func matchesSizes(r *config.Rule, d deal.Candidate) bool {
 	for _, s := range r.Sizes {
 		wanted[s] = struct{}{}
 	}
+	stockKnown := false
 	for _, s := range d.Sizes {
-		if !s.InStock {
+		if s.InStock {
+			stockKnown = true
+			break
+		}
+	}
+	for _, s := range d.Sizes {
+		if stockKnown && !s.InStock {
 			continue
 		}
 		if _, ok := wanted[s.Label]; ok {

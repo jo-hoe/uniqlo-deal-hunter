@@ -23,9 +23,7 @@ func testConfig(base string) config.Source {
 		BaseURL:           base,
 		Region:            "de",
 		Language:          "en",
-		Gender:            config.GenderMen,
-		SizeCodes:         []string{"MSC027"},
-		Sort:              2,
+		Segment:           config.SegmentMen,
 		ClientID:          "uq.de.web-spa",
 		ClientVersion:     "3.2509.1",
 		RequestsPerSecond: 100, // don't slow the test suite
@@ -243,6 +241,41 @@ func TestResolveSizes_CollapsesColorsAndDetectsStock(t *testing.T) {
 	}
 	if m == nil || !m.InStock {
 		t.Errorf("expected M in stock, got %+v", sizes)
+	}
+}
+
+func TestResolveSizes_InStockWhenStockStatusCodeAbsent(t *testing.T) {
+	// The real Uniqlo API omits stockStatusCode for normally-stocked items.
+	// sales=true with no stockStatusCode must be treated as in-stock.
+	srv := httptest.NewServer(versionHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/products/E1/price-groups/") {
+			writeJSON(t, w, map[string]any{
+				"status": "ok",
+				"result": map[string]any{
+					"l2s": []map[string]any{
+						{"l2Id": "1", "size": map[string]any{"code": "M", "name": "Medium"},
+							"color": map[string]string{"code": "R"}, "sales": true},
+					},
+				},
+			})
+			return
+		}
+		writeJSON(t, w, map[string]any{
+			"status": "ok",
+			"result": map[string]any{
+				"items": []any{fakeItem("E1", "Cashmere Jumper", 100, 80, 5)},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, testConfig(srv.URL), nil)
+	sizes, err := c.ResolveSizes(context.Background(), deal.ProductID("E1"))
+	if err != nil {
+		t.Fatalf("ResolveSizes: %v", err)
+	}
+	if len(sizes) != 1 || !sizes[0].InStock {
+		t.Errorf("expected M in stock when stockStatusCode absent, got %+v", sizes)
 	}
 }
 

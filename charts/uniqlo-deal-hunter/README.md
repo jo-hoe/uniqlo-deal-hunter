@@ -1,6 +1,6 @@
 # uniqlo-deal-hunter
 
-![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.3.0](https://img.shields.io/badge/AppVersion-0.3.0-informational?style=flat-square)
+![Version: 0.5.0](https://img.shields.io/badge/Version-0.5.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.4.0](https://img.shields.io/badge/AppVersion-0.4.0-informational?style=flat-square)
 
 A Kubernetes-native deal hunter for the Uniqlo online store.
 
@@ -72,20 +72,18 @@ Kubernetes: `>=1.27.0`
 | serviceAccount.annotations | object | `{}` | Extra annotations for the ServiceAccount. |
 | serviceAccount.create | bool | `true` | Create a dedicated ServiceAccount. |
 | serviceAccount.name | string | `""` | Explicit ServiceAccount name; auto-generated when empty. |
-| source | object | `{"baseURL":"https://www.uniqlo.com","clientID":"uq.de.web-spa","gender":"men","kind":"uniqlo","language":"en","maxRetries":3,"region":"de","requestsPerSecond":1,"sizeCodes":["MSC027","SMA004"],"sort":2,"timeout":"15s"}` | The source configuration is passed through to the app's YAML. |
+| source | object | `{"baseURL":"https://www.uniqlo.com","clientID":"uq.de.web-spa","kind":"uniqlo","language":"en","maxRetries":3,"region":"de","requestsPerSecond":1,"segment":"men","timeout":"15s"}` | The source configuration is passed through to the app's YAML. |
 | source.baseURL | string | `"https://www.uniqlo.com"` | Base URL of the Uniqlo storefront. |
 | source.clientID | string | `"uq.de.web-spa"` | Required x-fr-clientid header value. |
-| source.gender | string | `"men"` | Gender segment to filter by. One of: men, women, kids, baby. |
 | source.kind | string | `"uniqlo"` | Source kind; only "uniqlo" is supported today. |
 | source.language | string | `"en"` | Language path segment (e.g. "en"). |
 | source.maxRetries | int | `3` | Max retries on 5xx/429 responses. |
 | source.region | string | `"de"` | Region path segment (e.g. "de"). |
 | source.requestsPerSecond | int | `1` | HTTP request rate limit. |
-| source.sizeCodes | list | `["MSC027","SMA004"]` | Size codes to pre-filter the listing by (URL query parameter). |
-| source.sort | int | `2` | Sort parameter forwarded to the listing endpoint. |
+| source.segment | string | `"men"` | Segment to filter by. One of: men, women, kids, baby. |
 | source.timeout | string | `"15s"` | Per-request HTTP timeout. |
 | successfulJobsHistoryLimit | int | `3` | Number of successful finished jobs to keep. |
-| timeZone | string | `"Europe/Berlin"` | IANA time-zone name (e.g. "Europe/Berlin", "America/New_York", "Asia/Tokyo") in which `schedule` is interpreted. Requires Kubernetes 1.27+. When empty, the cluster's default is used. Since this app is Uniqlo-DE-shaped, a European TZ is the sensible default. |
+| timeZone | string | `""` | IANA time-zone name (e.g. "Europe/Berlin", "America/New_York", "Asia/Tokyo") in which `schedule` is interpreted. Requires Kubernetes 1.27+. When empty, the cluster's default is used. Since this app is Uniqlo-DE-shaped, a European TZ is the sensible default. |
 | tolerations | list | `[]` | Tolerations for the pod. |
 | ttlSecondsAfterFinished | int | `3600` | Seconds a finished Job is kept before automatic deletion. |
 

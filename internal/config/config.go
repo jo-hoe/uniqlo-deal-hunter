@@ -31,30 +31,30 @@ const (
 	SourceKindUniqlo SourceKind = "uniqlo"
 )
 
-// Gender enumerates the top-level gender segments Uniqlo exposes.
-// The string value is the human-readable name; each corresponds to a
+// Segment enumerates the top-level segments Uniqlo exposes.
+// The string value is the URL path segment; each corresponds to a
 // stable numeric gender ID used by the commerce API.
-type Gender string
+type Segment string
 
-// Supported gender values.
+// Supported segment values.
 const (
-	GenderMen   Gender = "men"
-	GenderWomen Gender = "women"
-	GenderKids  Gender = "kids"
-	GenderBaby  Gender = "baby"
+	SegmentMen   Segment = "men"
+	SegmentWomen Segment = "women"
+	SegmentKids  Segment = "kids"
+	SegmentBaby  Segment = "baby"
 )
 
-// GenderID returns the numeric ID Uniqlo's API expects for this Gender.
+// GenderID returns the numeric ID Uniqlo's API expects for this Segment.
 // Returns 0 for an unknown value (validate() rejects those at load time).
-func (g Gender) GenderID() int {
-	switch g {
-	case GenderWomen:
+func (s Segment) GenderID() int {
+	switch s {
+	case SegmentWomen:
 		return 37608
-	case GenderMen:
+	case SegmentMen:
 		return 37609
-	case GenderKids:
+	case SegmentKids:
 		return 37610
-	case GenderBaby:
+	case SegmentBaby:
 		return 37611
 	default:
 		return 0
@@ -67,9 +67,7 @@ type Source struct {
 	BaseURL           string        `yaml:"baseURL"`
 	Region            string        `yaml:"region"`
 	Language          string        `yaml:"language"`
-	Gender            Gender        `yaml:"gender"`
-	SizeCodes         []string      `yaml:"sizeCodes"`
-	Sort              int           `yaml:"sort"`
+	Segment           Segment       `yaml:"segment"`
 	ClientID          string        `yaml:"clientID"`
 	ClientVersion     string        `yaml:"clientVersion"`
 	RequestsPerSecond float64       `yaml:"requestsPerSecond"`
@@ -233,9 +231,9 @@ func (c *Config) validateSource() error {
 	if c.Source.Region == "" || c.Source.Language == "" {
 		return fmt.Errorf("%w: source.region and language are required", ErrInvalidConfig)
 	}
-	if c.Source.Gender.GenderID() == 0 {
-		return fmt.Errorf("%w: source.gender must be one of men|women|kids|baby, got %q",
-			ErrInvalidConfig, c.Source.Gender)
+	if c.Source.Segment.GenderID() == 0 {
+		return fmt.Errorf("%w: source.segment must be one of men|women|kids|baby, got %q",
+			ErrInvalidConfig, c.Source.Segment)
 	}
 	if c.Source.ClientID == "" {
 		return fmt.Errorf("%w: source.clientID is required", ErrInvalidConfig)

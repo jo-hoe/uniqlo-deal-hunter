@@ -90,14 +90,10 @@ func NewClient(cfg config.Source, logger *slog.Logger) *Client {
 // behaviour so any server-side validation stays happy.
 func (c *Client) listingURL(offset int) string {
 	base := strings.TrimRight(c.cfg.BaseURL, "/")
-	gid := c.cfg.Gender.GenderID()
+	gid := c.cfg.Segment.GenderID()
 	q := url.Values{}
 	q.Set("path", fmt.Sprintf("%d,,,", gid))
 	q.Set("flagCodes", "discount")
-	if len(c.cfg.SizeCodes) > 0 {
-		q.Set("sizeCodes", strings.Join(c.cfg.SizeCodes, ","))
-	}
-	q.Set("sort", strconv.Itoa(c.cfg.Sort))
 	q.Set("genderId", strconv.Itoa(gid))
 	q.Set("offset", strconv.Itoa(offset))
 	q.Set("limit", strconv.Itoa(pageSize))

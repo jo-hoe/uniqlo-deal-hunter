@@ -11,9 +11,7 @@ data:
       baseURL: {{ .Values.source.baseURL | quote }}
       region: {{ .Values.source.region | quote }}
       language: {{ .Values.source.language | quote }}
-      gender: {{ .Values.source.gender | quote }}
-      sizeCodes: {{ toJson .Values.source.sizeCodes }}
-      sort: {{ .Values.source.sort }}
+      segment: {{ .Values.source.segment | quote }}
       clientID: {{ .Values.source.clientID | quote }}
       requestsPerSecond: {{ .Values.source.requestsPerSecond }}
       timeout: {{ .Values.source.timeout | quote }}

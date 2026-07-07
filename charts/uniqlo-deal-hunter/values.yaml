@@ -36,7 +36,7 @@ schedule: "0 8,20 * * *"
 # "Asia/Tokyo") in which `schedule` is interpreted. Requires Kubernetes
 # 1.27+. When empty, the cluster's default is used. Since this app is
 # Uniqlo-DE-shaped, a European TZ is the sensible default.
-timeZone: "Europe/Berlin"
+timeZone: ""
 # -- CronJob concurrency policy: Allow, Forbid, or Replace.
 concurrencyPolicy: Forbid
 # -- Number of successful finished jobs to keep.
@@ -100,12 +100,8 @@ source:
   region: de
   # -- Language path segment (e.g. "en").
   language: en
-  # -- Gender segment to filter by. One of: men, women, kids, baby.
-  gender: men
-  # -- Size codes to pre-filter the listing by (URL query parameter).
-  sizeCodes: ["MSC027", "SMA004"]
-  # -- Sort parameter forwarded to the listing endpoint.
-  sort: 2
+  # -- Segment to filter by. One of: men, women, kids, baby.
+  segment: men
   # -- Required x-fr-clientid header value.
   clientID: uq.de.web-spa
   # -- HTTP request rate limit.

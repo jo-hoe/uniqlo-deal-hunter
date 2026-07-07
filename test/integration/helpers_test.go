@@ -196,7 +196,7 @@ func buildRunner(t *testing.T, apiURL, smtpAddr, dbPath string) *app.Runner {
 	cfg := &config.Config{
 		Source: config.Source{
 			Kind: config.SourceKindUniqlo, BaseURL: apiURL,
-			Region: "de", Language: "en", Gender: config.GenderMen,
+			Region: "de", Language: "en", Segment: config.SegmentMen,
 			ClientID: "test", RequestsPerSecond: 100, Timeout: 5 * time.Second, MaxRetries: 1,
 			UserAgent: "test",
 		},

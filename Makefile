@@ -81,13 +81,29 @@ push-k3d: docker-build ## Push the image to the local k3d registry
 	docker tag $(IMAGE_NAME):$(IMAGE_TAG) $(REGISTRY_LOCAL)/$(IMAGE_NAME):$(IMAGE_TAG)
 	docker push $(REGISTRY_LOCAL)/$(IMAGE_NAME):$(IMAGE_TAG)
 
+.PHONY: deploy-mailhog
+deploy-mailhog: ## Deploy Mailhog mail sink into the cluster (dev only)
+	kubectl run mailhog --image=mailhog/mailhog --port=1025 --port=8025 \
+		--labels=app=mailhog --restart=Never 2>/dev/null || true
+	kubectl expose pod mailhog --name=mailhog --port=1025 --target-port=1025 \
+		--selector=app=mailhog 2>/dev/null || true
+	kubectl wait pod/mailhog --for=condition=Ready --timeout=60s
+
+.PHONY: mailhog-ui
+mailhog-ui: ## Open Mailhog web UI via port-forward (http://localhost:8025)
+	kubectl port-forward pod/mailhog 8025:8025
+
 .PHONY: start-k3d
-start-k3d: start-cluster push-k3d ## Full local install: cluster + image + helm install
+start-k3d: start-cluster push-k3d deploy-mailhog ## Full local install: cluster + image + Mailhog + helm install
 	helm upgrade --install $(IMAGE_NAME) $(CHART_DIR) \
 		--set image.repository=registry.localhost:5000/$(IMAGE_NAME) \
 		--set image.tag=$(IMAGE_TAG) \
-		--set notifier.smtp.passwordSecret.create=true \
-		--set notifier.smtp.passwordSecret.value=devpassword
+		--set notifier.smtp.host=mailhog \
+		--set notifier.smtp.port=1025 \
+		--set notifier.smtp.startTLS=false \
+		--set notifier.smtp.from=deals@local \
+		--set "notifier.smtp.to[0]=me@local" \
+		--set notifier.smtp.auth.enabled=false
 
 .PHONY: stop-k3d
 stop-k3d: ## Delete the k3d cluster

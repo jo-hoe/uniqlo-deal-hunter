@@ -67,6 +67,13 @@ func TestEvaluator_MatchesSizes(t *testing.T) {
 	if got := e.Match(cand("x", "5", "10")); got != nil {
 		t.Errorf("expected no match: no sizes")
 	}
+	// Listing stage: all sizes InStock=false means stock unknown — match on label.
+	if got := e.Match(cand("x", "5", "10", outStock("M"))); got == nil {
+		t.Errorf("expected match: stock unknown at listing stage, M label present")
+	}
+	if got := e.Match(cand("x", "5", "10", outStock("L"))); got != nil {
+		t.Errorf("expected no match: stock unknown but L not in rule sizes")
+	}
 }
 
 func TestEvaluator_MatchesName(t *testing.T) {

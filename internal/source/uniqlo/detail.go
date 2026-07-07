@@ -69,8 +69,10 @@ func collapseSizes(rows []l2) []deal.Size {
 }
 
 // isStocked reports whether a single l2 row is currently purchasable.
+// The API omits stockStatusCode for normally-stocked items; only an explicit
+// "OUT_OF_STOCK" value means the item is unavailable.
 func isStocked(row *l2) bool {
-	return row.Sales && row.StockStatusCode != "" && row.StockStatusCode != "OUT_OF_STOCK"
+	return row.Sales && row.StockStatusCode != "OUT_OF_STOCK"
 }
 
 // displayOrName picks the best user-facing size label available.

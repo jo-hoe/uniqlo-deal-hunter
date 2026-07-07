@@ -102,6 +102,21 @@ func (r *Runner) enrichAndReconfirm(ctx context.Context, matches []notifier.Matc
 				"productId", m.Deal.ProductID, "err", err)
 			continue
 		}
+		// The l2s endpoint omits human-readable size names (e.g. "M") that the
+		// listing endpoint supplies. Re-apply the original labels so rule size
+		// matching (which compares against "M", "L", etc.) still works after
+		// the stock refresh.
+		labelByCode := make(map[string]string, len(m.Deal.Sizes))
+		for _, s := range m.Deal.Sizes {
+			if s.Label != "" {
+				labelByCode[s.Code] = s.Label
+			}
+		}
+		for i := range sizes {
+			if label, ok := labelByCode[sizes[i].Code]; ok {
+				sizes[i].Label = label
+			}
+		}
 		m.Deal.Sizes = sizes
 		// Re-check: rule may care about sizes and the fresh list may fail it.
 		matchedRule := r.eval.Match(m.Deal)

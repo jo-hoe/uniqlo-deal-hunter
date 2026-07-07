@@ -37,9 +37,7 @@ source:
   baseURL: https://www.uniqlo.com
   region: de
   language: en
-  gender: men
-  sizeCodes: ["MSC027", "SMA004"]
-  sort: 2
+  segment: men
   clientID: uq.de.web-spa
   requestsPerSecond: 1
 
