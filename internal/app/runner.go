@@ -96,45 +96,53 @@ func (r *Runner) filterCandidates(cands []deal.Candidate) []notifier.MatchedDeal
 func (r *Runner) enrichAndReconfirm(ctx context.Context, matches []notifier.MatchedDeal) []notifier.MatchedDeal {
 	out := make([]notifier.MatchedDeal, 0, len(matches))
 	for _, m := range matches {
-		sizes, err := r.src.ResolveSizes(ctx, m.Deal)
-		if err != nil {
-			r.logger.Warn("resolve sizes failed, skipping",
-				"productId", m.Deal.ProductID, "err", err)
-			continue
+		enriched, ok := r.enrichOne(ctx, m)
+		if ok {
+			out = append(out, enriched)
 		}
-		// The l2s endpoint omits human-readable size names (e.g. "M") that the
-		// listing endpoint supplies. Re-apply the original labels so rule size
-		// matching (which compares against "M", "L", etc.) still works after
-		// the stock refresh.
-		labelByCode := make(map[string]string, len(m.Deal.Sizes))
-		for _, s := range m.Deal.Sizes {
-			if s.Label != "" {
-				labelByCode[s.Code] = s.Label
-			}
-		}
-		for i := range sizes {
-			if label, ok := labelByCode[sizes[i].Code]; ok {
-				sizes[i].Label = label
-			}
-		}
-		m.Deal.Sizes = sizes
-		// Drop items with no purchasable size regardless of rule.
-		if len(m.Deal.InStockSizeLabels()) == 0 {
-			r.logger.Debug("dropped: no sizes in stock",
-				"productId", m.Deal.ProductID)
-			continue
-		}
-		// Re-check: rule may care about sizes and the fresh list may fail it.
-		matchedRule := r.eval.Match(m.Deal)
-		if matchedRule == nil {
-			r.logger.Debug("dropped after size refresh",
-				"productId", m.Deal.ProductID)
-			continue
-		}
-		m.RuleName = matchedRule.Name
-		out = append(out, m)
 	}
 	return out
+}
+
+// enrichOne resolves authoritative sizes for a single match, merges labels,
+// drops it if nothing is in stock, and re-evaluates it against the rule set.
+// Returns the updated match and true when it should proceed, false to drop.
+func (r *Runner) enrichOne(ctx context.Context, m notifier.MatchedDeal) (notifier.MatchedDeal, bool) {
+	sizes, err := r.src.ResolveSizes(ctx, m.Deal)
+	if err != nil {
+		r.logger.Warn("resolve sizes failed, skipping",
+			"productId", m.Deal.ProductID, "err", err)
+		return m, false
+	}
+	m.Deal.Sizes = mergeLabels(m.Deal.Sizes, sizes)
+	if len(m.Deal.InStockSizeLabels()) == 0 {
+		r.logger.Debug("dropped: no sizes in stock", "productId", m.Deal.ProductID)
+		return m, false
+	}
+	matchedRule := r.eval.Match(m.Deal)
+	if matchedRule == nil {
+		r.logger.Debug("dropped after size refresh", "productId", m.Deal.ProductID)
+		return m, false
+	}
+	m.RuleName = matchedRule.Name
+	return m, true
+}
+
+// mergeLabels re-applies human-readable labels from the listing sizes onto the
+// authoritative l2s sizes, which carry codes but not display names.
+func mergeLabels(listing, authoritative []deal.Size) []deal.Size {
+	labelByCode := make(map[string]string, len(listing))
+	for _, s := range listing {
+		if s.Label != "" {
+			labelByCode[s.Code] = s.Label
+		}
+	}
+	for i := range authoritative {
+		if label, ok := labelByCode[authoritative[i].Code]; ok {
+			authoritative[i].Label = label
+		}
+	}
+	return authoritative
 }
 
 // filterNew drops matches the store has already seen.
