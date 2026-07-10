@@ -188,6 +188,56 @@ func fakeUniqlo(t *testing.T) *httptest.Server {
 	return httptest.NewServer(handler)
 }
 
+// fakeUniqloOutOfStock is like fakeUniqlo but the l2s endpoint marks the
+// only size as out of stock, simulating the "no sizes in stock" scenario.
+func fakeUniqloOutOfStock(t *testing.T) *httptest.Server {
+	t.Helper()
+	item := map[string]any{
+		"productId":  "E2",
+		"name":       "Cotton Socks",
+		"priceGroup": "00",
+		"prices": map[string]any{
+			"base":  map[string]any{"value": 4.9, "currency": map[string]string{"code": "EUR"}},
+			"promo": map[string]any{"value": 2.9, "currency": map[string]string{"code": "EUR"}},
+			"lowestPriceDetails": map[string]any{
+				"canDisplayLowestPrice": true,
+				"lowestPeriod":          30,
+				"lowestPrice":           4.9,
+			},
+		},
+		"sizes":  []map[string]any{{"code": "M", "name": "Medium"}},
+		"colors": []map[string]string{{"code": "C1", "displayCode": "01"}},
+	}
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/de/en/" {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprint(w, `<html><script>window.__BUILD_VERSION__ = "9.9.9";</script></html>`)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(r.URL.Path, "/l2s") {
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"status": "ok",
+				"result": map[string]any{
+					"l2s": []map[string]any{
+						{"size": map[string]any{"code": "M", "name": "Medium"},
+							"color": map[string]string{"code": "C1"}, "sales": false, "stockStatusCode": "OUT_OF_STOCK"},
+					},
+				},
+			})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status": "ok",
+			"result": map[string]any{
+				"items":      []any{item},
+				"pagination": map[string]int{"total": 1, "offset": 0, "count": 1},
+			},
+		})
+	})
+	return httptest.NewServer(handler)
+}
+
 // buildRunner wires the real production packages against the fakes.
 func buildRunner(t *testing.T, apiURL, smtpAddr, dbPath string) *app.Runner {
 	t.Helper()

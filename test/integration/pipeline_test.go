@@ -9,6 +9,25 @@ import (
 	"testing"
 )
 
+// TestPipeline_NoSizesInStock_NoEmail verifies that a deal matching a rule is
+// silently suppressed when no size is purchasable after the authoritative l2s
+// call resolves all sizes as out of stock.
+func TestPipeline_NoSizesInStock_NoEmail(t *testing.T) {
+	api := fakeUniqloOutOfStock(t)
+	defer api.Close()
+
+	smtp := newFakeSMTPServer(t)
+	dbPath := filepath.Join(t.TempDir(), "state.db")
+
+	r := buildRunner(t, api.URL, smtp.addr, dbPath)
+	if err := r.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if smtp.BodyCount() != 0 {
+		t.Fatalf("expected no email when all sizes out of stock, got %d", smtp.BodyCount())
+	}
+}
+
 // TestPipeline_FirstRunNotifiesOnce_SecondRunDedups is the whole point of
 // this integration test: run the real Runner against fake collaborators,
 // once, assert one email lands; run it a second time with the same

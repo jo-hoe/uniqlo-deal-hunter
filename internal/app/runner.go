@@ -118,6 +118,12 @@ func (r *Runner) enrichAndReconfirm(ctx context.Context, matches []notifier.Matc
 			}
 		}
 		m.Deal.Sizes = sizes
+		// Drop items with no purchasable size regardless of rule.
+		if len(m.Deal.InStockSizeLabels()) == 0 {
+			r.logger.Debug("dropped: no sizes in stock",
+				"productId", m.Deal.ProductID)
+			continue
+		}
 		// Re-check: rule may care about sizes and the fresh list may fail it.
 		matchedRule := r.eval.Match(m.Deal)
 		if matchedRule == nil {
