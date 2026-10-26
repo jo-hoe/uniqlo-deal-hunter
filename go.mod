@@ -3,7 +3,7 @@ module github.com/jo-hoe/uniqlo-deal-hunter
 go 1.26.0
 
 require (
-	github.com/shopspring/decimal v1.5.0
+	github.com/shopspring/decimal v1.6.0
 	golang.org/x/time v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.60.1
